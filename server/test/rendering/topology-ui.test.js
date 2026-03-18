@@ -48,6 +48,53 @@ describeIfTopologyUi('markdown couchbase topology renderer', () => {
     expect(html).toContain('/_assets/topology-ui/images/nodebg.png')
   })
 
+  test('supports alignment attrs on the fence closing line', () => {
+    const md = new MarkdownIt({ html: true, breaks: true, linkify: true })
+    renderer.init(md, {
+      allowJavaScript: true,
+      assetRoot: '/_assets/topology-ui/images',
+      openMarker: '```couchbase-topology',
+      closeMarker: '```'
+    })
+
+    const html = md.render(`
+\`\`\`couchbase-topology
+{
+  "name": "cb-demo",
+  "version": "7.2.0",
+  "serverGroups": []
+}
+\`\`\` {.align-center #demo-topology}
+`)
+
+    expect(html).toContain('class="cb-topology-renderer-host align-center"')
+    expect(html).toContain('id="demo-topology"')
+  })
+
+  test('supports alignment attrs on the line after the fence', () => {
+    const md = new MarkdownIt({ html: true, breaks: true, linkify: true })
+    renderer.init(md, {
+      allowJavaScript: true,
+      assetRoot: '/_assets/topology-ui/images',
+      openMarker: '```couchbase-topology',
+      closeMarker: '```'
+    })
+
+    const html = md.render(`
+\`\`\`couchbase-topology
+{
+  "name": "cb-demo",
+  "version": "7.2.0",
+  "serverGroups": []
+}
+\`\`\`
+{.align-right}
+`)
+
+    expect(html).toContain('class="cb-topology-renderer-host align-right"')
+    expect(html).not.toContain('<p class="align-right"></p>')
+  })
+
   test('returns an error block for invalid payloads', () => {
     const md = new MarkdownIt({ html: true, breaks: true, linkify: true })
     renderer.init(md, {
