@@ -1,0 +1,100 @@
+.cb-topology-renderer-host {
+  display: block;
+  max-width: 100%;
+}
+
+.cb-topology-renderer-host > .cb-topology-renderer {
+  display: inline-block;
+  max-width: none;
+  min-width: max-content;
+  vertical-align: top;
+}
+
+.contents .cb-topology-renderer-host {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.layout .cb-topology-renderer .flex {
+  flex: initial !important;
+  max-width: none !important;
+  padding: 0 !important;
+}
+
+.cb-topology-renderer .align-center {
+  align-items: center;
+}
+
+.cb-topology-renderer .align-left {
+  align-items: flex-start;
+}
+
+.cb-topology-renderer .justify-content-center {
+  justify-content: center;
+}
+
+.cb-topology-renderer .max-w-100 {
+  max-width: 100%;
+}
+
+.cb-topology-renderer .grid-nowrap {
+  white-space: nowrap;
+}
+
+.cb-topology-renderer .shadow-400 {
+  box-shadow: 0 10px 25px -15px rgba(15, 23, 42, 0.45);
+}
+
+.cb-topology-renderer .shadow-xs {
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
+}
+
+.cb-topology-renderer .border-black-400 {
+  border-color: rgba(31, 41, 55, 0.25);
+}
+
+.cb-topology-renderer .-pb-2 {
+  margin-bottom: -0.5rem;
+}
+
+.contents .cb-topology-renderer p {
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: inherit !important;
+}
+
+.v-main .contents .cb-topology-renderer .mx-2.flex-column > .text-right {
+  margin-bottom: 0.35rem;
+  padding-bottom: 0.35rem;
+}
+
+.v-main .contents .cb-topology-renderer table {
+  margin: 0 !important;
+  width: auto !important;
+  border: none !important;
+  border-spacing: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+.v-main .contents .cb-topology-renderer table th,
+.v-main .contents .cb-topology-renderer table td,
+.v-main .contents .cb-topology-renderer table tr td:nth-child(even),
+.v-main .contents .cb-topology-renderer table tr:nth-child(even) td {
+  padding: 0.25rem 0.5rem !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+.v-main .contents .cb-topology-renderer .px-6 {
+  padding-left: 1.5rem !important;
+  padding-right: 1.5rem !important;
+}
+
+.v-main .contents .cb-topology-renderer .py-1 {
+  padding-top: 0.25rem !important;
+  padding-bottom: 0.25rem !important;
+}

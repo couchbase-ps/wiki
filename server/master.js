@@ -53,6 +53,19 @@ module.exports = async () => {
   // ----------------------------------------
 
   app.use(favicon(path.join(WIKI.ROOTPATH, 'assets', 'favicon.ico')))
+  try {
+    const topologyUiRoot = path.dirname(require.resolve('@couchbaselabs/topology-ui'))
+    const staticOptions = {
+      index: false,
+      maxAge: '7d'
+    }
+    app.use('/_assets/topology-ui', express.static(topologyUiRoot, staticOptions))
+    app.get('/_assets/topology-ui/wikijs.css', (req, res) => {
+      res.sendFile(path.join(WIKI.SERVERPATH, 'modules', 'rendering', 'markdown-couchbase-topology', 'wikijs.css'))
+    })
+  } catch (err) {
+    WIKI.logger.warn('Couchbase topology assets are unavailable. Install @couchbaselabs/topology-ui to enable the renderer.')
+  }
   app.use('/_assets/svg/twemoji', async (req, res, next) => {
     try {
       WIKI.asar.serve('twemoji', req, res, next)
