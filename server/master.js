@@ -60,9 +60,6 @@ module.exports = async () => {
       maxAge: '7d'
     }
     app.use('/_assets/topology-ui', express.static(topologyUiRoot, staticOptions))
-    app.get('/_assets/topology-ui/wikijs.css', (req, res) => {
-      res.sendFile(path.join(WIKI.SERVERPATH, 'modules', 'rendering', 'markdown-couchbase-topology', 'wikijs.css'))
-    })
   } catch (err) {
     WIKI.logger.warn('Couchbase topology assets are unavailable. Install @couchbaselabs/topology-ui to enable the renderer.')
   }
