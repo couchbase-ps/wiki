@@ -233,7 +233,7 @@ import { hydrateVega } from '../vega/hydrate'
 
 // AntV Infographic
 import { hydrateInfographic } from '../infographic/hydrate'
-import infographicPlugin from '../../../server/modules/rendering/markdown-infographic/plugin'
+import infographicPlugin from '../../../shared/markdown/infographic-plugin'
 
 // Helpers
 import katexHelper from './common/katex'

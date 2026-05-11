@@ -2,7 +2,7 @@
 // Markdown - AntV Infographic Preprocessor
 // ------------------------------------
 
-const infographicPlugin = require('./plugin')
+const infographicPlugin = require('../../../../shared/markdown/infographic-plugin')
 
 module.exports = {
   init (mdinst, conf) {

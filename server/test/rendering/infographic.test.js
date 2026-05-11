@@ -1,5 +1,5 @@
 const MarkdownIt = require('markdown-it')
-const infographicPlugin = require('../../modules/rendering/markdown-infographic/plugin')
+const infographicPlugin = require('../../../shared/markdown/infographic-plugin')
 
 function render(src) {
   const md = new MarkdownIt({ html: true })
