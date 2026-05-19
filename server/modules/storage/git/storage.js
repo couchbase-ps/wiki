@@ -13,6 +13,11 @@ const commonDisk = require('../disk/common')
 
 /* global WIKI */
 
+const isIgnoredPath = (relPath) => {
+  const normalizedPath = relPath.replace(/\\/g, '/')
+  return normalizedPath === '.github' || normalizedPath.startsWith('.github/')
+}
+
 module.exports = {
   git: null,
   repoPath: path.resolve(WIKI.ROOTPATH, WIKI.config.dataPath, 'repo'),
@@ -161,6 +166,10 @@ module.exports = {
           } else {
             fNames.old = (fMatch[1] + fMatch[2] + fMatch[4]).replace('//', '/')
             fNames.new = (fMatch[1] + fMatch[3] + fMatch[4]).replace('//', '/')
+          }
+          if (isIgnoredPath(fNames.new)) {
+            WIKI.logger.info(`(STORAGE/GIT) Skipping ignored path ${f.file}`)
+            continue
           }
           const fPath = path.join(this.repoPath, fNames.new)
           let fStats = { size: 0 }
@@ -437,7 +446,8 @@ module.exports = {
     await pipeline(
       klaw(this.repoPath, {
         filter: (f) => {
-          return !_.includes(f, '.git')
+          const relPath = f.substr(this.repoPath.length + 1)
+          return !_.includes(f, '.git') && !isIgnoredPath(relPath)
         }
       }),
       new Transform({
