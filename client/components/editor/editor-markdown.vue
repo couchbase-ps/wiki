@@ -132,6 +132,11 @@
             v-btn.mt-3.animated.fadeInLeft.wait-p3s(icon, tile, v-on='on', dark, @click='openMaturityMatrix').mx-0
               v-icon mdi-table-check
           span Insert Maturity Matrix
+        v-tooltip(right, color='teal')
+          template(v-slot:activator='{ on }')
+            v-btn.mt-3.animated.fadeInLeft.wait-p3s(icon, tile, v-on='on', dark, @click='openWellArchitected').mx-0
+              v-icon mdi-shield-check
+          span Insert Well-Architected Review
         template(v-if='$vuetify.breakpoint.mdAndUp')
           v-spacer
           v-tooltip(right, color='teal')
@@ -684,6 +689,10 @@ export default {
       this.$store.set('editor/activeModalData', null)
       this.toggleModal(`editorModalMaturityMatrix`)
     },
+    openWellArchitected () {
+      this.$store.set('editor/activeModalData', null)
+      this.toggleModal(`editorModalWellArchitected`)
+    },
     insertLinkHandler ({ locale, path }) {
       const lastPart = _.last(path.split('/'))
       this.insertAtCursor({
@@ -725,6 +734,32 @@ export default {
                 }
                 this.$store.set('editor/activeModalData', innerLines.join('\n'))
                 this.toggleModal(`editorModalMaturityMatrix`)
+              }
+            })(startLine, endLine)
+          })
+          found = null
+        } else if (ln.text === '<!--well-architected-->') {
+          found = 'well-architected'
+          foundStart = line
+        } else if (ln.text === '<!--/well-architected-->' && found === 'well-architected') {
+          const startLine = foundStart
+          const endLine = line
+          const startLineLen = this.cm.doc.getLine(startLine).length
+          this.addMarker({
+            kind: 'well-architected',
+            from: { line: startLine, ch: 0 },
+            to: { line: startLine, ch: startLineLen },
+            text: 'Edit Well-Architected Review',
+            action: ((start, end) => {
+              return (ev) => {
+                const endLen = this.cm.doc.getLine(end).length
+                this.cm.doc.setSelection({ line: start, ch: 0 }, { line: end, ch: endLen })
+                const innerLines = []
+                for (let i = start + 1; i < end; i++) {
+                  innerLines.push(this.cm.doc.getLine(i))
+                }
+                this.$store.set('editor/activeModalData', innerLines.join('\n'))
+                this.toggleModal(`editorModalWellArchitected`)
               }
             })(startLine, endLine)
           })
@@ -905,6 +940,14 @@ export default {
           this.cm.doc.replaceSelection(wrapped, 'start')
           // replaceSelection(_, 'start') leaves cursor at start; compute end from inserted line count
           this.processMarkers(mmStart, mmStart + wrappedLineCount + 1)
+          break
+        }
+        case 'WELL_ARCHITECTED': {
+          const waStart = this.cm.getCursor('from').line
+          const wrapped = '<!--well-architected-->\n' + opts.markdown + '\n<!--/well-architected-->\n'
+          const wrappedLineCount = wrapped.split('\n').length
+          this.cm.doc.replaceSelection(wrapped, 'start')
+          this.processMarkers(waStart, waStart + wrappedLineCount + 1)
           break
         }
       }
