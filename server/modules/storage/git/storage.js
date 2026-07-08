@@ -10,13 +10,9 @@ const os = require('os')
 const pageHelper = require('../../../helpers/page')
 const assetHelper = require('../../../helpers/asset')
 const commonDisk = require('../disk/common')
+const { loadIgnoreMatcher } = require('./ignore')
 
 /* global WIKI */
-
-const isIgnoredPath = (relPath) => {
-  const normalizedPath = relPath.replace(/\\/g, '/')
-  return normalizedPath === '.github' || normalizedPath.startsWith('.github/')
-}
 
 module.exports = {
   git: null,
@@ -148,6 +144,7 @@ module.exports = {
       const latestCommitLog = _.get(await this.git.log(['-n', '1', this.config.branch, '--']), 'latest', {})
 
       const diff = await this.git.diffSummary(['-M', currentCommitLog.hash, latestCommitLog.hash])
+      const isIgnored = await loadIgnoreMatcher(this.repoPath)
       if (_.get(diff, 'files', []).length > 0) {
         let filesToProcess = []
         const filePattern = /(.*?)(?:{(.*?))? => (?:(.*?)})?(.*)/
@@ -167,7 +164,7 @@ module.exports = {
             fNames.old = (fMatch[1] + fMatch[2] + fMatch[4]).replace('//', '/')
             fNames.new = (fMatch[1] + fMatch[3] + fMatch[4]).replace('//', '/')
           }
-          if (isIgnoredPath(fNames.new)) {
+          if (isIgnored(fNames.new)) {
             WIKI.logger.info(`(STORAGE/GIT) Skipping ignored path ${f.file}`)
             continue
           }
@@ -442,12 +439,13 @@ module.exports = {
     WIKI.logger.info(`(STORAGE/GIT) Importing all content from local Git repo to the DB...`)
 
     const rootUser = await WIKI.models.users.getRootUser()
+    const isIgnored = await loadIgnoreMatcher(this.repoPath)
 
     await pipeline(
       klaw(this.repoPath, {
         filter: (f) => {
           const relPath = f.substr(this.repoPath.length + 1)
-          return !_.includes(f, '.git') && !isIgnoredPath(relPath)
+          return !_.includes(f, '.git') && !isIgnored(relPath)
         }
       }),
       new Transform({
