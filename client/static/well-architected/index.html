@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Couchbase Well-Architected Review</title>
+    <link rel="icon" href="assets/couchbase-logo.png" type="image/png" sizes="32x32"/>
+    <link rel="apple-touch-icon" href="assets/couchbase-logo.png"/>
+    <link rel="stylesheet" href="assets/css/app.css"/>
+</head>
+<body>
+<div class="layout">
+    <aside class="sidebar">
+        <div class="brand">
+            <img class="brand-logo" src="assets/couchbase-logo.png" alt="Couchbase" width="32" height="32"/>
+            <div>
+                <p class="brand-title">Couchbase</p>
+                <p class="brand-subtitle">Well-Architected Review</p>
+            </div>
+        </div>
+        <h2>Pillars</h2>
+        <div id="pillars"></div>
+    </aside>
+    <main class="content">
+        <div class="container">
+            <div class="toolbar">
+                <input id="workloadName" type="text" placeholder="Workload name (e.g. Payments API Production)"/>
+                <input id="reviewName" type="text" placeholder="Review name (e.g. Team A - Q2)"/>
+                <button id="submitReview">Submit Review</button>
+                <button id="saveReview" type="button" disabled>Save to Wiki</button>
+                <button id="clearReview" class="btn-secondary" type="button">Start New Review</button>
+                <button id="closeReview" class="btn-secondary" type="button">Close</button>
+                <span id="saveHint" class="save-hint"></span>
+            </div>
+            <div id="pillarContent"></div>
+            <div id="result" class="result" style="display:none"></div>
+        </div>
+    </main>
+</div>
+<script src="assets/js/app.js?v=3"></script>
+</body>
+</html>

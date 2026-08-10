@@ -14,9 +14,10 @@ module.exports = function (req, res, next) {
 
   // -> Disable Frame Embedding
   if (WIKI.config.security.securityIframe) {
-    // Allow same-origin embedding for the Maturity Matrix editor asset
-    // (loaded inside the editor as an iframe). Everything else stays denied.
-    if (req.path.startsWith('/_assets/maturity-matrix/')) {
+    // Allow same-origin embedding for the editor tools loaded inside the
+    // editor as an iframe (Maturity Matrix, Well-Architected Review).
+    // Everything else stays denied.
+    if (req.path.startsWith('/_assets/maturity-matrix/') || req.path.startsWith('/_assets/well-architected/')) {
       res.set('X-Frame-Options', 'sameorigin')
     } else {
       res.set('X-Frame-Options', 'deny')
