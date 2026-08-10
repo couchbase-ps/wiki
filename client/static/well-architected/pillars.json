@@ -1,0 +1,1568 @@
+[
+  {
+    "id": "operational-excellence",
+    "name": "Operational Excellence (OPS)",
+    "description": "Operate, monitor, and continuously improve Couchbase cluster operations to deliver business value and mitigate risks.",
+    "questions": [
+      {
+        "id": "ops-1",
+        "title": "How do you monitor Couchbase health and establish actionable observability?",
+        "description": "Define baseline observability, core system metrics, and operational alerting to proactively detect degradation.",
+        "type": "multi_select",
+        "options": [
+          {
+            "id": "ops1-metrics",
+            "label": "Monitor Bucket Resident Ratio, KV ops/sec, and latencies",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "ops-risk-visibility", "severity": "high", "reason": "No visibility on resident ratios or core service metrics can lead to silent degradation and heavy disk thrashing." }
+              ],
+              "improvements": [
+                { "id": "ops-improvement-metrics", "title": "Implement Couchbase service-level monitoring", "description": "Track active resident ratios, KV throughput, and service-specific latencies to identify resource exhaustion early." }
+              ]
+            }
+          },
+          {
+            "id": "ops1-observability",
+            "label": "Use centralized telemetry and metrics endpoints",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "ops-risk-monitoring", "severity": "medium", "reason": "Fragmented or isolated cluster statistics slow down cross-tier incident root-cause analysis." }
+              ],
+              "improvements": [
+                { "id": "ops-improvement-observability", "title": "Centralize Couchbase telemetry", "description": "Integrate standard Couchbase Prometheus metric endpoints or Capella streaming integrations into unified platforms like Datadog or Grafana." }
+              ]
+            }
+          },
+          {
+            "id": "ops1-logging",
+            "label": "Enable completed requests logging for slow queries",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "ops-risk-query", "severity": "medium", "reason": "Unindexed or heavy unoptimized SQL++ queries run undetected, consuming shared cluster CPU resources." }
+              ],
+              "improvements": [
+                { "id": "ops-improvement-logging", "title": "Capture and analyze slow SQL++ queries", "description": "Leverage the system:completed_requests catalog or log thresholds to audit and optimize slow query executions regularly." }
+              ]
+            }
+          },
+          {
+            "id": "ops1-alerting",
+            "label": "Automate operational alerting with defined thresholds",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "ops-risk-detection", "severity": "high", "reason": "Critical platform exceptions like auto-failover triggers or rebalance failures risk long recovery delays without automated notifications." }
+              ],
+              "improvements": [
+                { "id": "ops-improvement-alerting", "title": "Configure infrastructure alerting thresholds", "description": "Set active alerts for node down events, unhealthily low bucket memory headroom, metadata chronicle status, and failed rebalances." }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "ops-2",
+        "title": "How do you safely manage cluster topology changes and scaling events?",
+        "description": "Control platform risk during scaling, topology alterations, and failover events to maintain stable operations.",
+        "type": "multi_select",
+        "options": [
+          {
+            "id": "ops2-rebalance",
+            "label": "Execute controlled rebalances during scheduled windows",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "ops-risk-rebalance", "severity": "high", "reason": "Triggering full rebalances under peak operational traffic shifts significant network and disk strain onto surviving nodes." }
+              ],
+              "improvements": [
+                { "id": "ops-improvement-rebalance", "title": "Establish predictable rebalance windows", "description": "Schedule capacity scaling tasks during off-peak windows to minimize the impact on active customer workloads." }
+              ]
+            }
+          },
+          {
+            "id": "ops2-delta",
+            "label": "Utilize Delta Node Recovery for transient node failures",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "ops-risk-delta", "severity": "medium", "reason": "Forcing full data re-syncs for nodes that were only offline briefly dramatically increases cluster recovery time and network overhead." }
+              ],
+              "improvements": [
+                { "id": "ops-improvement-delta", "title": "Prioritize Delta Node Recovery", "description": "Use Delta Recovery where possible to quickly reintegrate a failed node by only transferring the data that changed while it was offline." }
+              ]
+            }
+          },
+          {
+            "id": "ops2-batching",
+            "label": "Batch topology modifications to avoid frequent ad-hoc shifts",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "ops-risk-instability", "severity": "medium", "reason": "Repetitive, uncoordinated node additions and removals keep the cluster in a constant state of resource-intensive rebalancing." }
+              ],
+              "improvements": [
+                { "id": "ops-improvement-batching", "title": "Consolidate cluster adjustments", "description": "Batch node scaling activities together and map topology modifications to structured capacity expansion milestones." }
+              ]
+            }
+          },
+          {
+            "id": "ops2-tasks",
+            "label": "Monitor ongoing background operations via the Tasks API",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "ops-risk-tasks", "severity": "low", "reason": "Lack of insight into live data movement or index building progress makes operational planning unpredictable." }
+              ],
+              "improvements": [
+                { "id": "ops-improvement-tasks", "title": "Incorporate Tasks API validation", "description": "Use Couchbase internal REST task monitoring to verify the real-time status of rebalances, index builds, and bucket warmups." }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "ops-3",
+        "title": "How do you automate Couchbase deployments and configuration management?",
+        "description": "Treat infrastructure as code to reduce manual toil and ensure consistency across database environments.",
+        "type": "multi_select",
+        "options": [
+          {
+            "id": "ops3-iac",
+            "label": "Define Couchbase infrastructure using Configuration Management or IaC",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "ops-risk-iac", "severity": "high", "reason": "Manually deploying clusters or modifying bucket settings through the UI leads to configuration drift and irreproducible environments." }
+              ],
+              "improvements": [
+                { "id": "ops-improvement-iac", "title": "Implement Infrastructure as Code", "description": "Use Terraform, Ansible, or similar tooling to define cluster topologies, bucket quotas, and RBAC roles programmatically." }
+              ]
+            }
+          },
+          {
+            "id": "ops3-operator",
+            "label": "Deploy the Couchbase Autonomous Operator for Kubernetes orchestrations",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "ops-risk-operator", "severity": "medium", "reason": "Managing stateful database workloads manually on Kubernetes is highly error-prone and defeats the platform's orchestration benefits." }
+              ],
+              "improvements": [
+                { "id": "ops-improvement-operator", "title": "Adopt Operator-driven orchestration", "description": "Use the Couchbase Autonomous Operator to handle complex lifecycle management, auto-scaling, and self-healing natively within Kubernetes." }
+              ]
+            }
+          },
+          {
+            "id": "ops3-cicd",
+            "label": "Automate index creation and schema updates through CI/CD pipelines",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "ops-risk-cicd", "severity": "high", "reason": "Manually applying index definitions in production bypasses peer review and can lock up query services if applied incorrectly." }
+              ],
+              "improvements": [
+                { "id": "ops-improvement-cicd", "title": "Integrate database changes into pipelines", "description": "Store SQL++ index definitions in version control and apply them through automated deployment pipelines to ensure consistency." }
+              ]
+            }
+          },
+          {
+            "id": "ops3-versioning",
+            "label": "Implement version control for all database configuration parameters",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "ops-risk-versioning", "severity": "medium", "reason": "Without version control, rolling back an erroneous cluster setting or identifying who made a change during an incident is nearly impossible." }
+              ],
+              "improvements": [
+                { "id": "ops-improvement-versioning", "title": "Version control operational settings", "description": "Maintain a source-of-truth repository for all cluster tuning parameters, memory quotas, and cross-datacenter replication (XDCR) setups." }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "ops-4",
+        "title": "How do you respond to operational events and database incidents?",
+        "description": "Establish standardized procedures to investigate and resolve issues quickly while minimizing human error.",
+        "type": "multi_select",
+        "options": [
+          {
+            "id": "ops4-runbooks",
+            "label": "Maintain detailed runbooks for standard cluster activities",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "ops-risk-runbooks", "severity": "high", "reason": "Ambiguity during high-pressure incidents increases human errors, such as forcing incorrect hard failovers instead of graceful ones." }
+              ],
+              "improvements": [
+                { "id": "ops-improvement-runbooks", "title": "Document precise step-by-step procedures", "description": "Author strict operating procedures covering graceful vs hard failovers, node swap expansions, and emergency cluster restores." }
+              ]
+            }
+          },
+          {
+            "id": "ops4-playbooks",
+            "label": "Develop incident playbooks for investigating performance degradation",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "ops-risk-playbooks", "severity": "medium", "reason": "Without standardized playbooks, different administrators will troubleshoot the same issue differently, delaying root-cause identification." }
+              ],
+              "improvements": [
+                { "id": "ops-improvement-playbooks", "title": "Standardize investigation workflows", "description": "Create diagnostic playbooks for common scenarios like high CPU on indexers, query timeout spikes, or XDCR replication lag." }
+              ]
+            }
+          },
+          {
+            "id": "ops4-postmortem",
+            "label": "Conduct blameless post-incident analyses after critical outages",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "ops-risk-postmortem", "severity": "high", "reason": "Failing to conduct a structured post-incident review guarantees that systemic issues will remain unaddressed and repeat themselves." }
+              ],
+              "improvements": [
+                { "id": "ops-improvement-postmortem", "title": "Learn from all operational events", "description": "Define a standardized, blame-free process to document issues, identify root causes, and share lessons learned across the database team." }
+              ]
+            }
+          },
+          {
+            "id": "ops4-chaos",
+            "label": "Conduct routine cluster failure simulation tests",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "ops-risk-chaos", "severity": "high", "reason": "Hidden cluster structural dependencies or application retry logic flaws remain unnoticed until a genuine production crash." }
+              ],
+              "improvements": [
+                { "id": "ops-improvement-chaos", "title": "Incorporate chaos testing practices", "description": "Regularly run deliberate infrastructure failure drills to test node recovery behaviors and ensure client failover routes perform transparently." }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "ops-5",
+        "title": "How do you manage software lifecycles and safely upgrade your Couchbase environment?",
+        "description": "Upgrade ecosystem nodes safely while minimizing software regressions and availability interruptions.",
+        "type": "multi_select",
+        "options": [
+          {
+            "id": "ops5-rolling",
+            "label": "Utilize online rolling upgrade paths",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "ops-risk-rolling", "severity": "high", "reason": "Offline or mass node restart upgrade strategies break application availability guarantees unnecessarily." }
+              ],
+              "improvements": [
+                { "id": "ops-improvement-rolling", "title": "Implement standard rolling upgrades", "description": "Leverage Couchbase cluster redundancy to perform single-node swap updates or rolling rebalances to keep data fully online during software maintenance." }
+              ]
+            }
+          },
+          {
+            "id": "ops5-sdk",
+            "label": "Cross-reference and validate the Couchbase SDK Compatibility Matrix",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "ops-risk-sdk", "severity": "high", "reason": "Mismatches between older client application SDK versions and upgraded server protocols can cause connection drops or query failures." }
+              ],
+              "improvements": [
+                { "id": "ops-improvement-sdk", "title": "Verify application client compatibility rules", "description": "Check application SDK support levels against the target Couchbase Server version prior to initiating infrastructure deployments." }
+              ]
+            }
+          },
+          {
+            "id": "ops5-staging",
+            "label": "Replicate load and traffic behaviors in staging environments prior to upgrades",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "ops-risk-staging", "severity": "high", "reason": "Changes in query optimizer execution behaviors or engine regressions can cripple production performance post-upgrade if untested." }
+              ],
+              "improvements": [
+                { "id": "ops-improvement-staging", "title": "Run production-mimic testing suites", "description": "Validate target engine versions against realistic production application datasets and query workflows inside an isolated staging sandbox." }
+              ]
+            }
+          },
+          {
+            "id": "ops5-validation",
+            "label": "Execute post-upgrade behavioral health checks",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "ops-risk-validation", "severity": "medium", "reason": "Subtle query syntax warnings or service index anomalies can slip through unnoticed without targeted validation checks immediately after an upgrade." }
+              ],
+              "improvements": [
+                { "id": "ops-improvement-validation", "title": "Standardize system validation routines", "description": "Verify index structural health, cluster balance, data consistency states, and app latency metrics immediately after upgrade cycles." }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "ops-6",
+        "title": "How do you continually evaluate and improve your Couchbase operations?",
+        "description": "Establish continuous feedback loops to optimize processes, improve efficiency, and reduce operational toil over time.",
+        "type": "multi_select",
+        "options": [
+          {
+            "id": "ops6-audits",
+            "label": "Schedule regular audits of unused indexes and obsolete buckets",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "ops-risk-audits", "severity": "low", "reason": "Accumulating legacy data structures and redundant indexes slowly degrades cluster efficiency and increases backup storage footprints." }
+              ],
+              "improvements": [
+                { "id": "ops-improvement-audits", "title": "Implement operational cleanup routines", "description": "Periodically review query catalogs and system metrics to identify and drop unused secondary indexes or deprecated development buckets." }
+              ]
+            }
+          },
+          {
+            "id": "ops6-feedback",
+            "label": "Establish a continuous feedback loop between DBAs and application developers",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "ops-risk-feedback", "severity": "medium", "reason": "Operating the database in a silo prevents operations teams from understanding upcoming application schema changes or shifting query access patterns." }
+              ],
+              "improvements": [
+                { "id": "ops-improvement-feedback", "title": "Align operations with development roadmaps", "description": "Conduct regular technical reviews with developers to align index design, query optimization, and cluster capacity with upcoming application features." }
+              ]
+            }
+          },
+          {
+            "id": "ops6-metrics-review",
+            "label": "Track and review key operational metrics (e.g., MTTR, failed queries) over time",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "ops-risk-metrics-review", "severity": "medium", "reason": "Without tracking historical operational data, it is impossible to know if process changes are successfully reducing downtime or improving query latencies." }
+              ],
+              "improvements": [
+                { "id": "ops-improvement-metrics-review", "title": "Perform operations metrics reviews", "description": "Hold recurring reviews of historical metrics to identify long-term trends, prioritize technical debt reduction, and validate previous improvements." }
+              ]
+            }
+          },
+          {
+            "id": "ops6-rightsize",
+            "label": "Conduct periodic reviews of resource utilization to right-size clusters",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "ops-risk-rightsize", "severity": "medium", "reason": "Assuming a static capacity model prevents the organization from optimizing costs or scaling ahead of predictable traffic growth." }
+              ],
+              "improvements": [
+                { "id": "ops-improvement-rightsize", "title": "Iteratively assess cluster sizing", "description": "Routinely analyze CPU, memory, and IOPS consumption against baseline expectations to safely downscale over-provisioned nodes or scale up bottlenecks." }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "security",
+    "name": "Security (SEC)",
+    "description": "Protect access controls, data structures, and key material across Couchbase deployments.",
+    "questions": [
+      {
+        "id": "sec-1",
+        "title": "How do you manage identities and permissions for people and machines accessing Couchbase?",
+        "description": "Centralize identity management and enforce the principle of least privilege across all database interactions.",
+        "type": "multi_select",
+        "options": [
+          {
+            "id": "sec1-central-id",
+            "label": "Integrate a Centralized Identity Provider (LDAP, SAML, PAM)",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "sec-risk-central-id", "severity": "high", "reason": "Without a centralized identity provider, administrators must manage scattered local accounts, increasing the risk of orphaned accounts and unauthorized access." }
+              ],
+              "improvements": [
+                { "id": "sec-imp-central-id", "title": "Centralize Authentication", "description": "Configure Couchbase to integrate with LDAP, SAML, or PAM to manage workforce user access centrally." }
+              ]
+            }
+          },
+          {
+            "id": "sec1-rbac",
+            "label": "Enforce least-privilege via Scope and Collection-level RBAC",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "sec-risk-rbac", "severity": "high", "reason": "Granting full cluster or bucket-level access by default increases the blast radius if an application credential or administrator account is compromised." }
+              ],
+              "improvements": [
+                { "id": "sec-imp-rbac", "title": "Implement granular RBAC", "description": "Restrict client and administrator credentials specifically to the required Scopes or Collections rather than granting global access." }
+              ]
+            }
+          },
+          {
+            "id": "sec1-rotation",
+            "label": "Automate platform secret and credential rotations regularly",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "sec-risk-credentials", "severity": "high", "reason": "Static, long-term database passwords significantly increase systemic risk exposure over extended operational time horizons." }
+              ],
+              "improvements": [
+                { "id": "sec-imp-rotation", "title": "Automate secrets rotation", "description": "Integrate Couchbase authentication with external vault tools to ensure regular, automated rotation of application passwords." }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "sec-2",
+        "title": "How do you detect and investigate security events in your Couchbase environment?",
+        "description": "Capture and analyze events from logs to gain visibility and take action on potential threats.",
+        "type": "multi_select",
+        "options": [
+          {
+            "id": "sec2-audit",
+            "label": "Enable native Couchbase Auditing for tracking access modifications",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "sec-risk-audit", "severity": "medium", "reason": "Without audit logging, unauthorized changes to bucket settings, security topologies, or user permissions cannot be reliably traced for forensic investigation." }
+              ],
+              "improvements": [
+                { "id": "sec-imp-audit", "title": "Enable cluster audit logging", "description": "Turn on the Couchbase auditing service to capture security-relevant actions and administrative changes." }
+              ]
+            }
+          },
+          {
+            "id": "sec2-log-forward",
+            "label": "Forward audit and system logs to a central SIEM or observability platform",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "sec-risk-logs", "severity": "medium", "reason": "Fragmented logs stored only on isolated cluster nodes slow down incident response and risk being lost completely if a node fails." }
+              ],
+              "improvements": [
+                { "id": "sec-imp-logs", "title": "Centralize log management", "description": "Configure log forwarding (e.g., via Fluent Bit) to ship Couchbase logs to a secure, centralized SIEM for threat detection and correlation." }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "sec-3",
+        "title": "How do you protect your Couchbase network resources?",
+        "description": "Apply multiple layers of defense to protect from external and internal network-based threats.",
+        "type": "multi_select",
+        "options": [
+          {
+            "id": "sec3-ip-lists",
+            "label": "Restrict networking paths using explicit IP Access Lists and Security Groups",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "sec-risk-exposure", "severity": "high", "reason": "Exposing data interfaces or the administrative console to open network boundaries makes the cluster vulnerable to brute-force and zero-day exploits." }
+              ],
+              "improvements": [
+                { "id": "sec-imp-ip", "title": "Isolate network access", "description": "Restrict ingress traffic strictly to known application tiers and administration bastions using Security Groups and IP Access Lists." }
+              ]
+            }
+          },
+          {
+            "id": "sec3-private-link",
+            "label": "Incorporate private connectivity extensions (e.g., VPC Peering or PrivateLink)",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "sec-risk-network", "severity": "medium", "reason": "Routing operational database connections across public transit networks introduces interception vulnerabilities and unpredictable latency." }
+              ],
+              "improvements": [
+                { "id": "sec-imp-private", "title": "Establish private backend links", "description": "Route data traffic inside dedicated, isolated cloud paths using AWS PrivateLink, Azure Private Link, or explicit VPC/VNet peering tunnels." }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "sec-4",
+        "title": "How do you protect Couchbase data in transit and at rest?",
+        "description": "Protect data integrity and confidentiality through end-to-end encryption mechanisms.",
+        "type": "multi_select",
+        "options": [
+          {
+            "id": "sec4-tls",
+            "label": "Enforce strict Client-to-Cluster and Node-to-Node TLS encryption",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "sec-risk-tls", "severity": "high", "reason": "Unencrypted inter-node replication traffic or client queries are highly vulnerable to credential sniffing and man-in-the-middle attacks." }
+              ],
+              "improvements": [
+                { "id": "sec-imp-tls", "title": "Mandate universal transport encryption", "description": "Enforce strict TLS requirements (e.g., TLS 1.2+) for all client connections and enable node-to-node encryption for internal cluster traffic." }
+              ]
+            }
+          },
+          {
+            "id": "sec4-rest-enc",
+            "label": "Deploy Cloud/Storage Encryption at Rest (e.g., CMEK)",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "sec-risk-rest", "severity": "high", "reason": "Unencrypted physical storage volumes risk massive data leaks if the underlying disk snapshots or file systems are compromised." }
+              ],
+              "improvements": [
+                { "id": "sec-imp-rest", "title": "Enable volume-level encryption", "description": "Enforce persistent volume block encryption or utilize Customer-Managed Encryption Keys (CMEK) for all data nodes." }
+              ]
+            }
+          },
+          {
+            "id": "sec4-fle",
+            "label": "Implement Client-Side Field-Level Encryption (FLE) for highly sensitive PII",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "sec-risk-fle", "severity": "medium", "reason": "Storing raw, cleartext sensitive identifiers (like SSNs or API keys) in the database exposes confidential data to broad administrator views." }
+              ],
+              "improvements": [
+                { "id": "sec-imp-fle", "title": "Incorporate SDK Field-Level Encryption", "description": "Leverage native Couchbase SDK FLE packages to securely encrypt highly sensitive fields before the documents leave the application memory boundaries." }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "sec-5",
+        "title": "How do you prepare for and respond to security incidents involving Couchbase?",
+        "description": "Preparation is critical to timely investigation and recovery from security incidents.",
+        "type": "multi_select",
+        "options": [
+          {
+            "id": "sec5-backup-sec",
+            "label": "Encrypt cluster backup archives and store them in isolated, immutable vaults",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "sec-risk-backup", "severity": "high", "reason": "Unencrypted or accessible backup archives present an easy target for attackers or ransomware seeking to bypass active network controls." }
+              ],
+              "improvements": [
+                { "id": "sec-imp-backup", "title": "Isolate and encrypt backups", "description": "Utilize built-in encryption flags in cbbackupmgr and store backups in logically air-gapped, immutable object storage." }
+              ]
+            }
+          },
+          {
+            "id": "sec5-break-glass",
+            "label": "Establish and test emergency access processes (Break-Glass Roles)",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "sec-risk-break-glass", "severity": "medium", "reason": "Relying entirely on a centralized identity provider without a tested emergency backup can completely lock administrators out of the cluster during an IdP outage." }
+              ],
+              "improvements": [
+                { "id": "sec-imp-break-glass", "title": "Create emergency access runbooks", "description": "Pre-create and securely store emergency access credentials that bypass standard IdP mechanisms, strictly for use in verifiable emergency scenarios." }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "reliability",
+    "name": "Reliability (REL)",
+    "description": "Design for resilient node, availability zone, and regional failure recovery scenarios, ensuring workloads perform their intended functions correctly and consistently.",
+    "questions": [
+      {
+        "id": "rel-1",
+        "title": "How do you architect for server node and Availability Zone failures?",
+        "description": "Incorporate platform fault isolation and structure high availability cluster limits.",
+        "type": "multi_select",
+        "options": [
+          {
+            "id": "rel1-replica",
+            "label": "Configure appropriate bucket replica counts matching service criticality",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "rel-risk-loss", "severity": "high", "reason": "Running zero bucket replica configurations means a single server node crash will trigger immediate unrecoverable data unavailability." }
+              ],
+              "improvements": [
+                { "id": "rel-improvement-replica", "title": "Define standard bucket replication counts", "description": "Ensure core production buckets maintain 1 to 3 replica allocations depending on target infrastructure failure tolerances." }
+              ]
+            }
+          },
+          {
+            "id": "rel1-az",
+            "label": "Distribute operational nodes across physical failure zones using Server Groups",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "rel-risk-az", "severity": "high", "reason": "Failing to map rack/zone structures leaves primary documents and their corresponding replicas vulnerable to co-location on the same underlying rack or AZ." }
+              ],
+              "improvements": [
+                { "id": "rel-improvement-az", "title": "Activate Couchbase Server Groups integration", "description": "Map infrastructure availability zones directly to explicit Couchbase Server Groups to guarantee physical isolation between primary and replica payloads." }
+              ]
+            }
+          },
+          {
+            "id": "rel1-failover",
+            "label": "Calibrate automatic failover timeouts against workload tolerances",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "rel-risk-timeout", "severity": "high", "reason": "Setting excessive auto-failover timeouts prolongs client timeouts during outages, while overly aggressive thresholds risk false failovers during minor network blips." }
+              ],
+              "improvements": [
+                { "id": "rel-improvement-failover", "title": "Fine-tune automatic failover settings", "description": "Balance cluster auto-failover parameters to handle network blips smoothly while responding quickly to true server drops." }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "rel-2",
+        "title": "How do client applications manage transient cluster disruptions?",
+        "description": "Handle short-lived connectivity drops safely at the application layer using native SDK retry capabilities.",
+        "type": "multi_select",
+        "options": [
+          {
+            "id": "rel2-retry",
+            "label": "Deploy explicit Couchbase SDK retry strategies (e.g., BestEffortRetryStrategy)",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "rel-risk-retry", "severity": "high", "reason": "Using default or poorly configured client retries causes application errors during brief cluster topology shifts or rebalances." }
+              ],
+              "improvements": [
+                { "id": "rel-improvement-retry", "title": "Integrate intelligent client retry structures", "description": "Configure client SDK retry rules to automatically queue and retry transient exceptions during topology changes." }
+              ]
+            }
+          },
+          {
+            "id": "rel2-replica-read",
+            "label": "Incorporate SDK replica read methods for read-heavy workloads",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "rel-risk-read", "severity": "medium", "reason": "Read requests targeting documents on a failed active node stall completely until the cluster finishes its failover process." }
+              ],
+              "improvements": [
+                { "id": "rel-improvement-read", "title": "Integrate replica read queries via the SDK", "description": "Incorporate client methods like getAnyReplica or getAllReplicas to fetch documents from replica copies when primary nodes are unresponsive." }
+              ]
+            }
+          },
+          {
+            "id": "rel2-idempotent",
+            "label": "Design transactional application paths around idempotent operations",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "rel-risk-idempotency", "severity": "high", "reason": "Retrying non-idempotent mutations blind can duplicate business actions or corrupt document states." }
+              ],
+              "improvements": [
+                { "id": "rel-improvement-idempotent", "title": "Establish clear operation tracking keys", "description": "Ensure write operations use explicit document keys and logic that can be safely retried without unintended side effects." }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "rel-3",
+        "title": "How do you manage disaster recovery across different datacenters?",
+        "description": "Configure, monitor, and test multi-cluster global recovery patterns.",
+        "type": "multi_select",
+        "options": [
+          {
+            "id": "rel3-xdcr",
+            "label": "Deploy Cross-Cluster Replication (XDCR) and define conflict resolution rules",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "rel-risk-dr-replication", "severity": "high", "reason": "Without live data replication across distinct regions, a major site outage risks catastrophic data loss and prolonged downtime." }
+              ],
+              "improvements": [
+                { "id": "rel-improvement-xdcr", "title": "Establish an active XDCR replication design", "description": "Configure XDCR mappings between distinct geographic clusters, matching conflict resolution choices (Revision ID vs Timestamp) to business rules." }
+              ]
+            }
+          },
+          {
+            "id": "rel3-rpo-rto",
+            "label": "Align cluster configurations with explicit RPO and RTO metrics",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "rel-risk-rpo-rto", "severity": "medium", "reason": "Vague business recovery targets lead to architectures that cannot meet data retention or uptime needs during a crisis." }
+              ],
+              "improvements": [
+                { "id": "rel-improvement-rpo-rto", "title": "Formalize operational recovery targets", "description": "Document strict RPO and RTO parameters, auditing backup schedules and XDCR bandwidth metrics against those targets." }
+              ]
+            }
+          },
+          {
+            "id": "rel3-test",
+            "label": "Execute routine global data cutover and DR drills",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "rel-risk-dr-test", "severity": "high", "reason": "An unexercised DR plan often falls short during an actual emergency due to outdated client configurations or DNS issues." }
+              ],
+              "improvements": [
+                { "id": "rel-improvement-dr-test", "title": "Conduct live data failover rehearsals", "description": "Run controlled DR switchover exercises to validate target application redirection, client routing, and data consistency under load." }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "rel-4",
+        "title": "How do you back up data and ensure its recoverability?",
+        "description": "Establish persistent data protection mechanisms and validate restoration workflows to recover from catastrophic loss.",
+        "type": "multi_select",
+        "options": [
+          {
+            "id": "rel4-backup",
+            "label": "Automate routine backups using cbbackupmgr or the Backup Service",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "rel-risk-nobackup", "severity": "high", "reason": "Failing to automate backups leaves the cluster vulnerable to accidental data deletion or volume corruption." }
+              ],
+              "improvements": [
+                { "id": "rel-improvement-backup", "title": "Implement automated backup schedules", "description": "Use the Couchbase Backup Service or scheduled cbbackupmgr tasks to periodically back up cluster data to durable storage." }
+              ]
+            }
+          },
+          {
+            "id": "rel4-volumes",
+            "label": "Utilize Persistent Volumes for production deployments",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "rel-risk-ephemeral", "severity": "high", "reason": "Running production clusters on entirely ephemeral storage without persistent volumes prevents warm recovery and risks total data loss on node restarts." }
+              ],
+              "improvements": [
+                { "id": "rel-improvement-volumes", "title": "Back stateful nodes with persistent volumes", "description": "Ensure the Data, Index, and Analytics services are deployed using persistent storage volumes to preserve data across pod or node failures." }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "rel-5",
+        "title": "How do you monitor your Couchbase cluster to detect and respond to failures?",
+        "description": "Establish comprehensive observability to detect node stability issues, resource exhaustion, and critical platform events.",
+        "type": "multi_select",
+        "options": [
+          {
+            "id": "rel5-metrics",
+            "label": "Integrate standard Prometheus metrics and node stability monitoring",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "rel-risk-observability", "severity": "high", "reason": "No visibility on resident ratios or core service metrics can lead to silent degradation and heavy disk thrashing." }
+              ],
+              "improvements": [
+                { "id": "rel-improvement-metrics", "title": "Centralize Couchbase telemetry", "description": "Integrate standard Couchbase Prometheus metric endpoints to continuously track node stability and resource utilization." }
+              ]
+            }
+          },
+          {
+            "id": "rel5-tasks",
+            "label": "Monitor background operations via the Tasks API",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "rel-risk-tasks", "severity": "medium", "reason": "Lack of insight into live data movement or index building progress makes operational planning unpredictable." }
+              ],
+              "improvements": [
+                { "id": "rel-improvement-tasks", "title": "Incorporate Tasks API validation", "description": "Use Couchbase internal REST task monitoring to verify the real-time status of rebalances, index builds, and bucket warmups." }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "rel-6",
+        "title": "How do you manage cluster capacity to prevent resource-induced outages?",
+        "description": "Ensure the cluster has sufficient memory, CPU, and disk headroom to handle peak loads and automated failover events.",
+        "type": "multi_select",
+        "options": [
+          {
+            "id": "rel6-autoscaling",
+            "label": "Implement Couchbase Cluster Auto-scaling policies",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "rel-risk-capacity", "severity": "high", "reason": "Static clusters may run out of memory or CPU during unexpected traffic spikes, causing out-of-memory errors or latency timeouts." }
+              ],
+              "improvements": [
+                { "id": "rel-improvement-autoscaling", "title": "Enable dynamic auto-scaling", "description": "Configure Couchbase Cluster Auto-scaling rules to expand and shrink nodes dynamically based on CPU, memory, or query workload metrics." }
+              ]
+            }
+          },
+          {
+            "id": "rel6-headroom",
+            "label": "Maintain sufficient failover buffer capacity",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "rel-risk-buffer", "severity": "high", "reason": "If the cluster operates near 100% capacity, failing over a node will overwhelm the remaining nodes, causing a cascading failure." }
+              ],
+              "improvements": [
+                { "id": "rel-improvement-buffer", "title": "Size for failure margins", "description": "Provision enough underlying capacity across Server Groups so that the remaining nodes can absorb the data and traffic of a failed node without performance degradation." }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "rel-7",
+        "title": "How do you perform reliable deployments and infrastructure upgrades?",
+        "description": "Use automated tooling and rolling upgrade paths to minimize human error and avoid downtime during platform maintenance.",
+        "type": "multi_select",
+        "options": [
+          {
+            "id": "rel7-operator",
+            "label": "Utilize the Couchbase Autonomous Operator for Kubernetes",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "rel-risk-manual-ops", "severity": "medium", "reason": "Manual deployments and scaling events are prone to configuration drift and human errors during high-pressure incidents." }
+              ],
+              "improvements": [
+                { "id": "rel-improvement-operator", "title": "Adopt Operator-driven orchestration", "description": "Deploy the Couchbase Kubernetes Operator to automate complex lifecycle management, configuration synchronization, and automated cluster recovery." }
+              ]
+            }
+          },
+          {
+            "id": "rel7-rolling",
+            "label": "Execute online rolling upgrades and avoid ad-hoc topology shifts",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "rel-risk-downtime", "severity": "high", "reason": "Offline node restart strategies or frequent uncoordinated topology shifts break application availability guarantees and keep the cluster in a constant state of rebalancing." }
+              ],
+              "improvements": [
+                { "id": "rel-improvement-rolling", "title": "Standardize rolling upgrade procedures", "description": "Leverage Couchbase cluster redundancy to perform single-node swap updates or rolling rebalances to keep data fully online during software maintenance." }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "rel-8",
+        "title": "How do you test the resiliency of your Couchbase architecture?",
+        "description": "Validate that the infrastructure and applications recover smoothly from injected failures and failover routines.",
+        "type": "multi_select",
+        "options": [
+          {
+            "id": "rel8-chaos",
+            "label": "Conduct routine cluster failure simulation tests",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "rel-risk-untested", "severity": "high", "reason": "Hidden cluster structural dependencies or cross-zone network routing breaks remain unnoticed until a production crash." }
+              ],
+              "improvements": [
+                { "id": "rel-improvement-chaos", "title": "Incorporate automated chaos testing practices", "description": "Regularly run deliberate infrastructure failure drills to test node recovery behaviors and ensure client failover routes perform transparently." }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "performance-efficiency",
+    "name": "Performance Efficiency (PERF)",
+    "description": "Optimize SQL++ execution strategies, access models, and platform resource footprints for predictable sub-millisecond responses.",
+    "questions": [
+      {
+        "id": "perf-1",
+        "title": "How do you optimize SQL++ (N1QL) query execution metrics?",
+        "description": "Minimize query scan overhead and CPU processing spikes through efficient indexing and optimized query structures.",
+        "type": "multi_select",
+        "options": [
+          {
+            "id": "perf1-covered",
+            "label": "Ensure common high-frequency queries are index-covered",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "perf-risk-scan", "severity": "high", "reason": "Queries that are not index-covered require expensive data service fetches, causing high latency and memory thrashing." }
+              ],
+              "improvements": [
+                { "id": "perf-improvement-covered", "title": "Design comprehensive index covering strategies", "description": "Build Global Secondary Indexes (GSI) that include both query predicate keys and projection fields to keep executions entirely in the index tier." }
+              ]
+            }
+          },
+          {
+            "id": "perf1-sargable",
+            "label": "Structure sargable query predicates to enable effective index pushdowns",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "perf-risk-cpu", "severity": "high", "reason": "Using non-sargable predicates (like wrapping index keys in functions) forces full primary index scans, causing massive CPU spikes." }
+              ],
+              "improvements": [
+                { "id": "perf-improvement-sargable", "title": "Refactor unindexed query predicates", "description": "Avoid wrapping indexed attributes in runtime functions like LOWER() within the WHERE clause, ensuring the query engine can utilize index bounds efficiently." }
+              ]
+            }
+          },
+          {
+            "id": "perf1-fts",
+            "label": "Leverage Search (FTS) and Flex Indexes for multi-attribute ad-hoc searching",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "perf-risk-fts", "severity": "medium", "reason": "Forcing complex, multi-attribute ad-hoc text filters into standard GSI structures leads to bloated indexes and poor query performance." }
+              ],
+              "improvements": [
+                { "id": "perf-improvement-fts", "title": "Integrate Flex Index patterns with Search", "description": "Deploy the Couchbase Search service for text-heavy queries and enable Flex Indexing so the query service can route requests to FTS indexes automatically." }
+              ]
+            }
+          },
+          {
+            "id": "perf1-prepared",
+            "label": "Enforce prepared statements for high-throughput parameterized executions",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "perf-risk-prepared", "severity": "medium", "reason": "Re-parsing and planning identical query strings repeatedly adds avoidable query engine overhead, severely hurting throughput." }
+              ],
+              "improvements": [
+                { "id": "perf-improvement-prepared", "title": "Enforce client query optimization controls", "description": "Leverage parameterized queries via your SDK, allowing Couchbase to cache optimal execution plans automatically." }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "perf-2",
+        "title": "How are client data access paths and document models structured?",
+        "description": "Align storage models and data access strategies with the native strengths of the Couchbase Key-Value architecture.",
+        "type": "multi_select",
+        "options": [
+          {
+            "id": "perf2-kv",
+            "label": "Prioritize direct Key-Value (KV) access paths over SQL++ for point modifications",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "perf-risk-kv", "severity": "high", "reason": "Using SQL++ queries for simple single-document lookups adds unnecessary query parsing and index lookups, bypassing the high-speed in-memory KV engine." }
+              ],
+              "improvements": [
+                { "id": "perf-improvement-kv", "title": "Route single-document lookups to the KV service", "description": "Refactor application logic to retrieve documents directly by their unique key ID using standard SDK get and upsert operations." }
+              ]
+            }
+          },
+          {
+            "id": "perf2-model",
+            "label": "Model JSON documents based on access patterns and utilize Sub-Document operations",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "perf-risk-model", "severity": "high", "reason": "Poor data modeling (such as massive, unbounded arrays) forces huge network transfers and high disk I/O for minor field updates." }
+              ],
+              "improvements": [
+                { "id": "perf-improvement-model", "title": "Optimize document structures for Couchbase", "description": "Design clean document models with reasonable bounds, and leverage SDK Sub-Document operations to read or mutate specific fields without transferring the entire document payload." }
+              ]
+            }
+          },
+          {
+            "id": "perf2-eventing",
+            "label": "Deploy Couchbase Eventing instead of continuous client application polling",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "perf-risk-polling", "severity": "medium", "reason": "Frequent database polling from worker apps generates constant query load, increasing database network traffic and response latency." }
+              ],
+              "improvements": [
+                { "id": "perf-improvement-eventing", "title": "Incorporate real-time server-side Eventing functions", "description": "Use the native Couchbase Eventing service to trigger lightweight, server-side JavaScript logic immediately when data changes occur." }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "perf-3",
+        "title": "How do you size and scale your service infrastructure?",
+        "description": "Right-size cluster instances, index engines, and memory configurations using Multi-Dimensional Scaling (MDS).",
+        "type": "multi_select",
+        "options": [
+          {
+            "id": "perf3-separation",
+            "label": "Isolate engine roles (Data, Query, Index, Search) using Multi-Dimensional Scaling (MDS)",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "perf-risk-services", "severity": "medium", "reason": "Colocating resource-intensive services like Query and Data on the same server nodes causes resource contention, leading to erratic KV latencies." }
+              ],
+              "improvements": [
+                { "id": "perf-improvement-services", "title": "Implement Multi-Dimensional Scaling", "description": "Isolate different Couchbase services onto dedicated node pools, matching underlying instance types to the unique CPU, RAM, or storage needs of each specific service." }
+              ]
+            }
+          },
+          {
+            "id": "perf3-index-memory",
+            "label": "Size index allocations properly and select the appropriate index engine (Plasma)",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "perf-risk-memory", "severity": "high", "reason": "Under-provisioning index memory pools causes index thrashing, driving high disk reads and severely slowing down query performance." }
+              ],
+              "improvements": [
+                { "id": "perf-improvement-index-memory", "title": "Optimize index engine selection and sizing", "description": "Size index RAM quotas to maintain healthy resident ratios, and leverage the Plasma engine to ensure memory-optimized index traversals." }
+              ]
+            }
+          },
+          {
+            "id": "perf3-magma",
+            "label": "Evaluate the Magma Storage Engine for high-density, disk-heavy datasets",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "perf-risk-storage-engine", "severity": "medium", "reason": "Using memory-heavy storage backends for massive datasets can become cost-prohibitive due to the high RAM footprint required just to maintain document keys." }
+              ],
+              "improvements": [
+                { "id": "perf-improvement-magma", "title": "Deploy Magma for high-volume storage", "description": "Configure large buckets to use the Magma storage engine, enabling sub-millisecond operations even when only a small fraction of data fits in RAM." }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "perf-4",
+        "title": "How do you maintain optimal query execution plans and database statistics?",
+        "description": "Ensure the query engine has the necessary statistical data and advice to formulate the most efficient execution paths.",
+        "type": "multi_select",
+        "options": [
+          {
+            "id": "perf4-cbo",
+            "label": "Utilize the Cost-Based Optimizer (CBO) and regularly UPDATE STATISTICS",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "perf-risk-cbo", "severity": "high", "reason": "Without updated collection statistics, the query engine relies on rule-based heuristics that can pick suboptimal index paths for complex joins." }
+              ],
+              "improvements": [
+                { "id": "perf-improvement-cbo", "title": "Automate Cost-Based Optimizer statistics gathering", "description": "Run the UPDATE STATISTICS statement regularly on active collections to feed the Cost-Based Optimizer accurate data distribution metrics." }
+              ]
+            }
+          },
+          {
+            "id": "perf4-advisor",
+            "label": "Periodically consult the Couchbase Index Advisor",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "perf-risk-advisor", "severity": "medium", "reason": "Relying purely on manual query tuning often misses subtle opportunities for index consolidation or optimization." }
+              ],
+              "improvements": [
+                { "id": "perf-improvement-advisor", "title": "Leverage the ADVISE function", "description": "Use the Index Advisor (via the ADVISE statement) to automatically analyze slow SQL++ queries and generate optimal CREATE INDEX recommendations." }
+              ]
+            }
+          },
+          {
+            "id": "perf4-slow-queries",
+            "label": "Enable and monitor completed requests logging for slow queries",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "perf-risk-slow-queries", "severity": "medium", "reason": "Unindexed or unoptimized SQL++ queries run undetected, consuming shared cluster CPU resources and starving legitimate traffic." }
+              ],
+              "improvements": [
+                { "id": "perf-improvement-slow-queries", "title": "Capture and analyze slow SQL++ queries", "description": "Leverage the system:completed_requests catalog or log thresholds to actively audit and optimize slow query executions." }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "perf-5",
+        "title": "How do your client applications efficiently interact with the database cluster?",
+        "description": "Utilize SDK best practices to maximize network throughput and minimize connection overhead.",
+        "type": "multi_select",
+        "options": [
+          {
+            "id": "perf5-bulk",
+            "label": "Implement explicit Bulk Operations for large dataset modifications",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "perf-risk-bulk", "severity": "high", "reason": "Executing thousands of individual write requests sequentially adds massive network round-trip overhead and throttles overall data ingestion rates." }
+              ],
+              "improvements": [
+                { "id": "perf-improvement-bulk", "title": "Adopt asynchronous or reactive bulk batching", "description": "Refactor data ingestion pipelines to utilize native Couchbase SDK Bulk Operations, maximizing network pipelining and throughput." }
+              ]
+            }
+          },
+          {
+            "id": "perf5-defer",
+            "label": "Defer index builds during massive data imports",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "perf-risk-defer", "severity": "medium", "reason": "Creating indexes individually during heavy data loads causes the indexer to repeatedly scan the data service, slowing down write performance." }
+              ],
+              "improvements": [
+                { "id": "perf-improvement-defer", "title": "Utilize the DEFER BUILD clause", "description": "Use the 'WITH {\"defer_build\": true}' option when defining multiple secondary indexes, and use BUILD INDEX to construct them efficiently in a single pass." }
+              ]
+            }
+          },
+          {
+            "id": "perf5-rto",
+            "label": "Enable SDK Response Time Observability to profile slow operations",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "perf-risk-rto", "severity": "low", "reason": "Without application-side tracing, it is difficult to determine if latency is caused by network routing, SDK serialization, or the database engine." }
+              ],
+              "improvements": [
+                { "id": "perf-improvement-rto", "title": "Trace end-to-end SDK performance", "description": "Enable Response Time Observability within the Couchbase SDK to emit threshold-based logging and distributed trace spans for slow operations." }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "perf-6",
+        "title": "How do you optimize Full Text Search (FTS) and Analytics workloads?",
+        "description": "Isolate heavy analytical and text-search workloads to prevent them from impacting operational data latencies.",
+        "type": "multi_select",
+        "options": [
+          {
+            "id": "perf6-analytics",
+            "label": "Route ad-hoc analytical and complex aggregate queries to the Analytics Service",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "perf-risk-analytics", "severity": "high", "reason": "Executing massive, cluster-wide aggregations or ad-hoc data explorations on the operational Query Service can exhaust CPU resources and degrade application latency." }
+              ],
+              "improvements": [
+                { "id": "perf-improvement-analytics", "title": "Isolate analytical queries", "description": "Deploy the Couchbase Enterprise Analytics Service to handle complex, long-running, and ad-hoc data explorations without impacting operational KV or Query nodes." }
+              ]
+            }
+          },
+          {
+            "id": "perf6-fts-partitioning",
+            "label": "Utilize Index Partitioning for massive Full Text Search (FTS) indexes",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "perf-risk-fts-partitioning", "severity": "medium", "reason": "A single massive FTS index can hit physical node resource constraints, leading to slow text scoring and high memory consumption during mutations." }
+              ],
+              "improvements": [
+                { "id": "perf-improvement-fts-partitioning", "title": "Distribute FTS indexes across nodes", "description": "Configure Index Partitioning for large FTS indexes, distributing the query scattering and gathering phases across multiple search nodes to increase throughput." }
+              ]
+            }
+          },
+          {
+            "id": "perf6-type-mapping",
+            "label": "Restrict FTS Index scope using specific Type Mappings and Custom Analyzers",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "perf-risk-type-mapping", "severity": "medium", "reason": "Using the default dynamic mapping for FTS indexes every single field in every document, creating enormous, slow indexes filled with irrelevant data." }
+              ],
+              "improvements": [
+                { "id": "perf-improvement-type-mapping", "title": "Target specific fields for FTS", "description": "Disable dynamic mapping and explicitly define Type Mappings and Child Fields to index only the exact text attributes required by the application." }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "cost-optimization",
+    "name": "Cost Optimization (COST)",
+    "description": "Run Couchbase systems to deliver business value at the lowest price point by right-sizing infrastructure, managing data lifecycles, and tracking resource attribution.",
+    "questions": [
+      {
+        "id": "cost-1",
+        "title": "How do you govern and monitor your Couchbase resource usage and costs?",
+        "description": "Establish policies and procedures to monitor, appropriately allocate, and alert on costs associated with your database workloads.",
+        "type": "multi_select",
+        "options": [
+          {
+            "id": "cost1-tagging",
+            "label": "Identify cost attribution using comprehensive resource tagging",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "cost-risk-tagging", "severity": "medium", "reason": "Without tagging underlying instances or Kubernetes pods, organizations cannot track resources over their lifetime, making it impossible to attribute database costs to specific business units or applications." }
+              ],
+              "improvements": [
+                { "id": "cost-imp-tagging", "title": "Implement a tagging scheme", "description": "Gather stakeholders to define a tagging schema for all underlying Couchbase infrastructure to enable cost allocation and chargebacks." }
+              ]
+            }
+          },
+          {
+            "id": "cost1-alerts",
+            "label": "Configure billing alerts and anomaly detection",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "cost-risk-alerts", "severity": "high", "reason": "Failing to set budget limits and anomaly detection can result in severe 'cost shocks' if a cluster unexpectedly scales or network traffic spikes." }
+              ],
+              "improvements": [
+                { "id": "cost-imp-alerts", "title": "Create daily cost and usage budgets", "description": "Configure cloud budget alerts and cost anomaly detection to notify teams immediately when database operational costs exceed predefined thresholds." }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "cost-2",
+        "title": "How do you optimize Couchbase compute and infrastructure costs?",
+        "description": "Select the appropriate resource type, size, and pricing models to meet workload performance needs at the lowest cost.",
+        "type": "multi_select",
+        "options": [
+          {
+            "id": "cost2-mds",
+            "label": "Utilize Multi-Dimensional Scaling (MDS) to isolate services",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "cost-risk-mds", "severity": "medium", "reason": "Scaling all nodes identically forces you to over-provision expensive compute or memory resources globally, even if only one specific service (like Indexing) is constrained." }
+              ],
+              "improvements": [
+                { "id": "cost-imp-mds", "title": "Leverage target service auto-scaling", "description": "Utilize Couchbase Multi-Dimensional Scaling (MDS) properties to scale only the specific service layers (Data, Query, Index) that are resource-constrained." }
+              ]
+            }
+          },
+          {
+            "id": "cost2-autoscaling",
+            "label": "Implement Couchbase Cluster Auto-scaling based on demand",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "cost-risk-autoscaling", "severity": "high", "reason": "Provisioning static clusters for peak capacity means paying for idle computing resources during periods of low application demand." }
+              ],
+              "improvements": [
+                { "id": "cost-imp-autoscaling", "title": "Enable dynamic auto-scaling", "description": "Configure Couchbase Cluster Auto-scaling rules to expand and shrink nodes dynamically based on CPU, memory, or query workload metrics." }
+              ]
+            }
+          },
+          {
+            "id": "cost2-pricing",
+            "label": "Adopt cost-effective pricing models (e.g., Reserved Instances / Savings Plans)",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "cost-risk-pricing", "severity": "medium", "reason": "Running predictable, steady-state database clusters entirely on On-Demand instances misses out on significant volume discount savings." }
+              ],
+              "improvements": [
+                { "id": "cost-imp-pricing", "title": "Review and implement commitment pricing", "description": "Analyze steady-state database node usage and apply Reserved Instances (RIs) or Savings Plans to reduce the hourly compute cost of the baseline workload." }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "cost-3",
+        "title": "How do you optimize Couchbase data storage costs?",
+        "description": "Manage data lifecycles, limit index overhead, and align storage models to reduce unnecessary block storage expenses.",
+        "type": "multi_select",
+        "options": [
+          {
+            "id": "cost3-ttl",
+            "label": "Apply native Time-To-Live (TTL) settings for transient data",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "cost-risk-ttl", "severity": "medium", "reason": "Allowing short-lived session or cache data to accumulate indefinitely inflates storage footprints and drives up cluster scaling costs." }
+              ],
+              "improvements": [
+                { "id": "cost-imp-ttl", "title": "Enforce automated TTL retention rules", "description": "Configure document or collection-level TTL settings to automatically purge old or temporary documents without application overhead." }
+              ]
+            }
+          },
+          {
+            "id": "cost3-ephemeral",
+            "label": "Utilize Ephemeral Buckets for pure cache layers",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "cost-risk-ephemeral", "severity": "low", "reason": "Using standard persistent buckets for transient caching workloads incurs unneeded disk write overhead and increases underlying block storage costs." }
+              ],
+              "improvements": [
+                { "id": "cost-imp-ephemeral", "title": "Evaluate Ephemeral bucket configurations", "description": "Deploy Couchbase Ephemeral Buckets for pure caching layers to keep operations entirely in-memory and remove persistent block storage requirements." }
+              ]
+            }
+          },
+          {
+            "id": "cost3-indexes",
+            "label": "Identify and remove redundant or duplicate indexes",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "cost-risk-indexes", "severity": "medium", "reason": "Unused or redundant indexes waste expensive memory quota and disk space while simultaneously slowing down mutation write performance." }
+              ],
+              "improvements": [
+                { "id": "cost-imp-indexes", "title": "Establish index cleanup routines", "description": "Regularly audit index usage statistics via system catalogs, removing indexes that do not support active query workflows." }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "cost-4",
+        "title": "How do you manage data transfer and network costs?",
+        "description": "Plan and monitor data transfer charges to make architectural decisions that minimize operational networking expenses.",
+        "type": "multi_select",
+        "options": [
+          {
+            "id": "cost4-endpoints",
+            "label": "Use VPC Endpoints or PrivateLink for internal traffic",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "cost-risk-endpoints", "severity": "medium", "reason": "Routing internal database traffic or backups through public NAT gateways incurs high outbound internet data transfer processing charges." }
+              ],
+              "improvements": [
+                { "id": "cost-imp-endpoints", "title": "Implement private network routing", "description": "Use VPC Endpoints or PrivateLink to keep application-to-database communication on the private provider network, reducing per-GB data transfer costs." }
+              ]
+            }
+          },
+          {
+            "id": "cost4-xdcr",
+            "label": "Optimize Cross-Cluster Replication (XDCR) regional traffic",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "cost-risk-xdcr", "severity": "medium", "reason": "Replicating entire buckets across geographic cloud regions without filtering can lead to unexpectedly high inter-region bandwidth bills." }
+              ],
+              "improvements": [
+                { "id": "cost-imp-xdcr", "title": "Monitor and filter XDCR transfers", "description": "Analyze cross-region replication needs and implement XDCR filtering so that only strictly necessary business data is transmitted across regional boundaries." }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "cost-5",
+        "title": "How do you manage the lifecycle of your Couchbase environments to prevent waste?",
+        "description": "Implement resource management from inception to end-of-life, shutting down unused resources to reduce waste.",
+        "type": "multi_select",
+        "options": [
+          {
+            "id": "cost5-hibernation",
+            "label": "Hibernate or pause non-production clusters during off-hours",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "cost-risk-hibernation", "severity": "medium", "reason": "Leaving development and testing database environments running 24/7 wastes approximately 70% of potential operational cost savings." }
+              ],
+              "improvements": [
+                { "id": "cost-imp-hibernation", "title": "Implement Couchbase Cluster Hibernation", "description": "Utilize Couchbase Cluster Hibernation or automated infrastructure schedules to pause non-production clusters outside of core business hours." }
+              ]
+            }
+          },
+          {
+            "id": "cost5-cleanup",
+            "label": "Audit and remove sample buckets, unused data, and orphaned volumes",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "cost-risk-cleanup", "severity": "low", "reason": "Retaining unused sample data buckets or detached physical disk volumes incurs ongoing block storage fees for zero business value." }
+              ],
+              "improvements": [
+                { "id": "cost-imp-cleanup", "title": "Automate unused asset cleanup", "description": "Ensure development Sample Buckets are not deployed in higher environments, and actively monitor and delete orphaned block storage volumes." }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "data-management-consistency",
+    "name": "Data Management & Consistency (DATA)",
+    "description": "Manage consistency controls, write durability guarantees, and logical organization shapes across evolving Couchbase datasets.",
+    "questions": [
+      {
+        "id": "data-1",
+        "title": "How do you manage write durability and concurrency controls?",
+        "description": "Balance application data integrity guarantees with network latency, and ensure safe concurrent document modifications.",
+        "type": "multi_select",
+        "options": [
+          {
+            "id": "data1-durability",
+            "label": "Leverage synchronous Durability Levels for critical business writes",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "data-risk-durability", "severity": "high", "reason": "Using asynchronous writes for high-value transactional data risks silent data loss if an active node fails before changes are replicated." }
+              ],
+              "improvements": [
+                { "id": "data-improvement-durability", "title": "Enforce explicit SDK Durability Levels", "description": "Configure critical mutations to use explicit synchronous durability levels like Majority or MajorityAndPersistToActive to guarantee replication before acknowledgment." }
+              ]
+            }
+          },
+          {
+            "id": "data1-cas",
+            "label": "Enforce Check-And-Set (CAS) tokens for optimistic concurrency control",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "data-risk-cas", "severity": "high", "reason": "Without concurrency controls, concurrent application threads can overwrite each other's updates, leading to data corruption." }
+              ],
+              "improvements": [
+                { "id": "data-improvement-cas", "title": "Incorporate CAS mutation flows", "description": "Utilize native Couchbase CAS tokens inside application write and update logic to protect concurrent mutations from stepping on each other." }
+              ]
+            }
+          },
+          {
+            "id": "data1-locking",
+            "label": "Utilize explicit document locking (getAndLock) for pessimistic concurrency",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "data-risk-locking", "severity": "medium", "reason": "Relying purely on optimistic concurrency for highly contested single documents can lead to excessive application retry loops and CPU overhead." }
+              ],
+              "improvements": [
+                { "id": "data-improvement-locking", "title": "Implement pessimistic locking for hot documents", "description": "Use the SDK's getAndLock operation to temporarily lock highly contested documents during complex read-modify-write cycles." }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "data-2",
+        "title": "How do you structure data lifecycles and logical isolation?",
+        "description": "Control database volume growth and manage document schema transformations over time using multi-tenant boundaries.",
+        "type": "multi_select",
+        "options": [
+          {
+            "id": "data2-collections",
+            "label": "Organize datasets logically using Scopes and Collections",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "data-risk-collections", "severity": "high", "reason": "Dumping unrelated datasets into a single bucket complicates index design, safety boundaries, and data lifecycles, while creating separate buckets adds heavy cluster overhead." }
+              ],
+              "improvements": [
+                { "id": "data-improvement-collections", "title": "Adopt a clean Scopes and Collections taxonomy", "description": "Group data structures logically into Scopes and Collections within a bucket to simplify access controls, indexing, and multi-tenant isolation." }
+              ]
+            }
+          },
+          {
+            "id": "data2-ttl",
+            "label": "Apply native Time-To-Live (TTL) expirations for transient data",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "data-risk-ttl", "severity": "medium", "reason": "Relying on manual application sweeps to delete old data leads to unbounded disk growth and degraded memory resident ratios." }
+              ],
+              "improvements": [
+                { "id": "data-improvement-ttl", "title": "Automate document expiration", "description": "Configure document or collection-level TTL settings to automatically purge old or temporary documents natively within the data service." }
+              ]
+            }
+          },
+          {
+            "id": "data2-schema",
+            "label": "Implement application-tier schema versioning for evolving JSON layouts",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "data-risk-schema", "severity": "high", "reason": "Modifying document properties without backwards compatibility logic can break active SQL++ index queries or cause application crashes on older client nodes." }
+              ],
+              "improvements": [
+                { "id": "data-improvement-schema", "title": "Establish explicit schema evolution patterns", "description": "Include a structural version field in your JSON models, handling schema updates gracefully within the application reading layer." }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "data-3",
+        "title": "How do you balance SQL++ query consistency with performance?",
+        "description": "Tune index scan consistency to meet business requirements without unnecessarily degrading query throughput.",
+        "type": "multi_select",
+        "options": [
+          {
+            "id": "data3-scan-consistency",
+            "label": "Configure appropriate scan_consistency levels per query",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "data-risk-scan-consistency", "severity": "high", "reason": "Applying 'request_plus' globally forces the indexer to wait for all mutations to process before returning results, severely impacting read throughput." }
+              ],
+              "improvements": [
+                { "id": "data-improvement-scan-consistency", "title": "Optimize query consistency targets", "description": "Evaluate query requirements and use 'not_bounded' for general analytics or 'request_plus' strictly for operations requiring immediate read-your-own-writes consistency." }
+              ]
+            }
+          },
+          {
+            "id": "data3-covering",
+            "label": "Utilize Covering Indexes for high-frequency queries",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "data-risk-covering", "severity": "medium", "reason": "Requiring the query service to fetch documents from the data service for every index scan adds significant latency to read operations." }
+              ],
+              "improvements": [
+                { "id": "data-improvement-covering", "title": "Design comprehensive index covering strategies", "description": "Build Global Secondary Indexes (GSI) that include both query predicate keys and projection fields to keep executions entirely in the index tier." }
+              ]
+            }
+          },
+          {
+            "id": "data3-prepared",
+            "label": "Enforce prepared statements for high-throughput parameterized executions",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "data-risk-prepared", "severity": "medium", "reason": "Re-parsing and planning identical query strings repeatedly adds avoidable query engine CPU overhead." }
+              ],
+              "improvements": [
+                { "id": "data-improvement-prepared", "title": "Enforce client query optimization controls", "description": "Leverage parameterized queries via your SDK, allowing Couchbase to cache optimal execution plans automatically." }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "data-4",
+        "title": "How do you maintain atomicity across multiple document modifications?",
+        "description": "Ensure data integrity when performing complex, multi-document, or multi-collection workflows.",
+        "type": "multi_select",
+        "options": [
+          {
+            "id": "data4-transactions",
+            "label": "Implement Couchbase Distributed ACID Transactions via SDK or SQL++",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "data-risk-transactions", "severity": "high", "reason": "Building custom two-phase commit logic in application code is highly error-prone and can leave orphaned records if an application node crashes mid-process." }
+              ],
+              "improvements": [
+                { "id": "data-improvement-transactions", "title": "Leverage native ACID transactions", "description": "Use the native Distributed ACID Transactions API in the Couchbase SDK or SQL++ to automatically handle rollbacks and consistency across multiple documents." }
+              ]
+            }
+          },
+          {
+            "id": "data4-subdoc",
+            "label": "Utilize Sub-Document operations for atomic updates within a single JSON structure",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "data-risk-subdoc", "severity": "medium", "reason": "Fetching large documents just to update a single array element consumes excessive network bandwidth and increases CAS conflict probabilities." }
+              ],
+              "improvements": [
+                { "id": "data-improvement-subdoc", "title": "Optimize with Sub-Document API", "description": "Use Couchbase Sub-Document operations to atomically manipulate specific fields or arrays within a JSON document without retrieving the entire payload." }
+              ]
+            }
+          },
+          {
+            "id": "data4-idempotent",
+            "label": "Design transactional application paths around idempotent operations",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "data-risk-idempotency", "severity": "high", "reason": "Retrying non-idempotent mutations blindly during transient network errors can duplicate business actions or corrupt document states." }
+              ],
+              "improvements": [
+                { "id": "data-improvement-idempotent", "title": "Establish clear operation tracking keys", "description": "Ensure write operations use explicit document keys and tracking logic that can be safely retried without unintended side effects." }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "data-5",
+        "title": "How do you resolve data conflicts in active-active cross-datacenter deployments?",
+        "description": "Manage Cross-Cluster Replication (XDCR) to prevent divergent data sets during multi-directional syncing.",
+        "type": "multi_select",
+        "options": [
+          {
+            "id": "data5-conflict",
+            "label": "Enable Timestamp-based Conflict Resolution for replicated data",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "data-risk-conflict", "severity": "high", "reason": "Relying on default Revision ID conflict resolution in an active-active setup can lead to older data overwriting newer data if mutations happen concurrently across regions." }
+              ],
+              "improvements": [
+                { "id": "data-improvement-conflict", "title": "Standardize XDCR conflict strategies", "description": "Configure Timestamp-based Conflict Resolution to ensure the most recent mutation always wins globally." }
+              ]
+            }
+          },
+          {
+            "id": "data5-filtering",
+            "label": "Implement XDCR Advanced Filtering",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "data-risk-filtering", "severity": "medium", "reason": "Replicating entire buckets across geographic networks without filtering consumes excessive bandwidth for data that might only be needed locally." }
+              ],
+              "improvements": [
+                { "id": "data-improvement-filtering", "title": "Filter XDCR replication traffic", "description": "Use XDCR Advanced Filtering with regular expressions to replicate only the specific keys or collections necessary for remote operations." }
+              ]
+            }
+          },
+          {
+            "id": "data5-logging",
+            "label": "Monitor XDCR Conflict Logging",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "data-risk-logging", "severity": "medium", "reason": "Failing to monitor conflict resolution logs makes it difficult to audit why specific document versions were retained or discarded across clusters." }
+              ],
+              "improvements": [
+                { "id": "data-improvement-logging", "title": "Enable and review XDCR Conflict Logging", "description": "Enable XDCR Conflict Logging to maintain visibility into how concurrent mutations are resolved across multi-datacenter environments." }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "data-6",
+        "title": "How do you automate complex data enrichment and reactive workflows?",
+        "description": "Process data changes and enforce business rules reliably as mutations happen across the cluster.",
+        "type": "multi_select",
+        "options": [
+          {
+            "id": "data6-eventing",
+            "label": "Use the Couchbase Eventing Service for asynchronous data triggers",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "data-risk-eventing", "severity": "medium", "reason": "Relying on external application polling to detect database changes introduces latency and increases continuous read load on the cluster." }
+              ],
+              "improvements": [
+                { "id": "data-improvement-eventing", "title": "Adopt Event-driven architectures", "description": "Deploy Couchbase Eventing functions to listen for data mutations and automatically trigger enrichment, cascade deletes, or external REST API calls." }
+              ]
+            }
+          },
+          {
+            "id": "data6-timers",
+            "label": "Leverage Eventing Timers for delayed execution workflows",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "data-risk-timers", "severity": "low", "reason": "Building custom application schedulers to manage delayed document state changes introduces unnecessary external dependencies." }
+              ],
+              "improvements": [
+                { "id": "data-improvement-timers", "title": "Implement native execution timers", "description": "Use Eventing Timers to schedule business logic (like document archival or shipping notifications) at precise times in the future." }
+              ]
+            }
+          },
+          {
+            "id": "data6-rbac-eventing",
+            "label": "Enforce strict Role-Based Access Control (RBAC) on Eventing functions",
+            "ifNotSelected": {
+              "risks": [
+                { "id": "data-risk-rbac-eventing", "severity": "high", "reason": "Over-privileged Eventing functions could inadvertently modify or delete data outside of their intended scope or collection boundaries." }
+              ],
+              "improvements": [
+                { "id": "data-improvement-rbac-eventing", "title": "Scope Eventing execution privileges", "description": "Assign specific RBAC roles to Eventing functions to limit their read and write access strictly to the required Collections." }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  }
+]
