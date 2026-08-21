@@ -120,7 +120,7 @@ module.exports = class Renderer extends Model {
 
       // Build tree
       const rawCores = _.filter(renderers, renderer => !_.has(renderer, 'dependsOn')).map(core => {
-        core.children = _.filter(renderers, ['dependsOn', core.key])
+        core.children = _.sortBy(_.filter(renderers, ['dependsOn', core.key]), 'key')
         return core
       })
 
