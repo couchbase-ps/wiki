@@ -11,6 +11,7 @@ Fork of Wiki.js (AGPL-3.0) + Couchbase-specific extensions. Keep custom code iso
 - `server/graph/schemas/` — GraphQL SDL. `server/graph/resolvers/` — resolvers.
 - `server/modules/rendering/` — custom markdown renderers (registered as modules). New renderer → here, follow existing module pattern.
 - `server/modules/authentication/` — Passport.js auth strategies. New auth module → here.
+- `server/modules/search/couchbase/` — Couchbase FTS search engine. Owns its scope-level index (`index-definition.json`, upserted on `init()`). Pure logic in `helpers.js` (unit-tested), SDK IO in `engine.js`. Bucket/scope/collection provisioned outside this repo: ps-knowledge-hub terraform for Capella, `couchbase-init` compose service locally.
 - `server/db/migrations/` — DB migrations (irreversible once run).
 - `server/middlewares/` — auth/permission middleware.
 - `patches/` — patch-package patches. `server/test/` — tests. `.npmrc` — `save-exact = true`.
@@ -33,6 +34,7 @@ Fork of Wiki.js (AGPL-3.0) + Couchbase-specific extensions. Keep custom code iso
 - GraphQL queries inline via `graphql-tag` babel plugin (tag: `gql`).
 - Stack: Vue 2 + Vuex + Vue Router + Apollo Client. NOT Vue 3 — no Vue 3 APIs.
 - GraphQL subscriptions via `subscriptions-transport-ws`, NOT `graphql-ws`.
+- `couchbase@4.7.1` is a native addon (prebuilt binaries per platform). Image builds must fetch or build a binary matching the target arch.
 - Commits: gitmoji — `<emoji>(<scope>) #<issue>: <message>`. Scope + `#issue` optional. No Co-Authored-By trailer.
 - After client change: `yarn build` or verify via `yarn dev` before done.
 - After server change: `yarn test` before done.
