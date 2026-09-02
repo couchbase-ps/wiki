@@ -1,0 +1,62 @@
+key: couchbase
+title: Couchbase
+description: Couchbase Full Text Search, a distributed search engine built into Couchbase Server.
+author: couchbase-ps
+# Inlined rather than linked: the sibling engines point at
+# static.requarks.io, which has no Couchbase logo (404).
+logo: data:image/svg+xml;base64,PHN2ZyBmaWxsPSIjRUEyMzI4IiByb2xlPSJpbWciIHZpZXdCb3g9IjAgMCAyNCAyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48dGl0bGU+Q291Y2hiYXNlPC90aXRsZT48cGF0aCBkPSJNMjAuMTExIDE0LjEwNGExLjQ2NyAxLjQ1OCAwIDAgMS0xLjIzNSAxLjUwM2MtMS40MjIuMjQ0LTQuMzg1LjM5OC02Ljg3NS4zOThzLTUuNDU0LS4xNS02Ljg3Ny0uMzk4Yy0uODE0LS4xNC0xLjIzNS0uNzg3LTEuMjM1LTEuNTAzVjkuNDE3YTEuNTcgMS41NiAwIDAgMSAxLjIzNS0xLjUwNSAxNS43MiAxNS42MTkgMCAwIDEgMi4xNTYtLjE0LjUzNy41MzMgMCAwIDEgLjUyMy41NDN2My4zMDNjMS40NjMgMCAyLjcyNy0uMDg2IDQuMjAxLS4wODYgMS40NzQgMCAyLjcyNy4wODYgNC4xOTYuMDg2VjguMzQyYS41MzUuNTMyIDAgMCAxIC40OTQtLjU2OWguMDI3YTE1Ljk5NSAxNS44OTEgMCAwIDEgMi4xNTYuMTQgMS41NyAxLjU2IDAgMCAxIDEuMjM0IDEuNTA0ek0xMi4wMDEgMEM1LjM3MyAwIDAgNS4zNzQgMCAxMmMwIDYuNjI4IDUuMzczIDEyIDEyIDEyIDYuNjI4IDAgMTItNS4zNzIgMTItMTIgMC02LjYyNi01LjM3My0xMi0xMi0xMnoiLz48L3N2Zz4=
+website: https://www.couchbase.com/products/full-text-search/
+isAvailable: true
+props:
+  connectionString:
+    type: String
+    title: Connection String
+    hint: 'Couchbase connection string, e.g. couchbase://localhost or couchbases://cb.example.cloud.couchbase.com. Falls back to the CB_CONNECTION_STRING environment variable when left empty.'
+    order: 1
+  username:
+    type: String
+    title: Username
+    hint: 'Database credential username. Falls back to CB_USER when left empty.'
+    order: 2
+  password:
+    type: String
+    title: Password
+    hint: 'Database credential password. Falls back to CB_PASSWORD when left empty.'
+    sensitive: true
+    order: 3
+  bucketName:
+    type: String
+    title: Bucket
+    hint: 'Falls back to CB_BUCKET when left empty.'
+    default: wiki
+    order: 4
+  scopeName:
+    type: String
+    title: Scope
+    hint: 'Falls back to CB_SCOPE when left empty.'
+    default: search
+    order: 5
+  collectionName:
+    type: String
+    title: Collection
+    hint: 'Falls back to CB_COLLECTION when left empty.'
+    default: pages
+    order: 6
+  indexName:
+    type: String
+    title: Search Index Name
+    hint: 'Scope-level FTS index. Created automatically on activation. Falls back to CB_FTS_INDEX when left empty.'
+    default: wiki-pages-fts
+    order: 7
+  maxResults:
+    type: Number
+    title: Maximum Results
+    hint: 'Upper bound on hits fetched per search. Results are filtered by permissions and paged afterwards, so this caps the total, not the page size.'
+    default: 1000
+    order: 8
+  verifyTLSCertificate:
+    type: Boolean
+    title: Verify TLS Certificate
+    hint: 'Applies to couchbases:// connections only.'
+    default: true
+    order: 9

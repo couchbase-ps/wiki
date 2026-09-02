@@ -1,0 +1,148 @@
+{
+  "name": "wiki-pages-fts",
+  "type": "fulltext-index",
+  "sourceType": "gocbcore",
+  "sourceName": "wiki",
+  "sourceParams": {},
+  "planParams": {
+    "indexPartitions": 1,
+    "maxPartitionsPerPIndex": 1024
+  },
+  "params": {
+    "doc_config": {
+      "mode": "scope.collection.type_field",
+      "type_field": "type"
+    },
+    "store": {
+      "indexType": "scorch",
+      "segmentVersion": 16
+    },
+    "mapping": {
+      "analysis": {},
+      "default_analyzer": "standard",
+      "default_datetime_parser": "dateTimeOptional",
+      "default_field": "_all",
+      "default_mapping": {
+        "dynamic": false,
+        "enabled": false
+      },
+      "default_type": "_default",
+      "docvalues_dynamic": false,
+      "index_dynamic": false,
+      "store_dynamic": false,
+      "type_field": "_type",
+      "types": {
+        "search.pages": {
+          "dynamic": false,
+          "enabled": true,
+          "properties": {
+            "title": {
+              "dynamic": false,
+              "enabled": true,
+              "fields": [
+                {
+                  "name": "title",
+                  "type": "text",
+                  "analyzer": "standard",
+                  "index": true,
+                  "include_in_all": true,
+                  "store": true,
+                  "docvalues": true
+                }
+              ]
+            },
+            "description": {
+              "dynamic": false,
+              "enabled": true,
+              "fields": [
+                {
+                  "name": "description",
+                  "type": "text",
+                  "analyzer": "standard",
+                  "index": true,
+                  "include_in_all": true,
+                  "store": true,
+                  "docvalues": true
+                }
+              ]
+            },
+            "content": {
+              "dynamic": false,
+              "enabled": true,
+              "fields": [
+                {
+                  "name": "content",
+                  "type": "text",
+                  "analyzer": "standard",
+                  "index": true,
+                  "include_in_all": true,
+                  "store": false,
+                  "docvalues": false
+                }
+              ]
+            },
+            "tags": {
+              "dynamic": false,
+              "enabled": true,
+              "fields": [
+                {
+                  "name": "tags",
+                  "type": "text",
+                  "analyzer": "keyword",
+                  "index": true,
+                  "include_in_all": true,
+                  "store": true,
+                  "docvalues": true
+                }
+              ]
+            },
+            "path": {
+              "dynamic": false,
+              "enabled": true,
+              "fields": [
+                {
+                  "name": "path",
+                  "type": "text",
+                  "analyzer": "keyword",
+                  "index": true,
+                  "include_in_all": false,
+                  "store": true,
+                  "docvalues": true
+                }
+              ]
+            },
+            "locale": {
+              "dynamic": false,
+              "enabled": true,
+              "fields": [
+                {
+                  "name": "locale",
+                  "type": "text",
+                  "analyzer": "keyword",
+                  "index": true,
+                  "include_in_all": false,
+                  "store": true,
+                  "docvalues": true
+                }
+              ]
+            },
+            "id": {
+              "dynamic": false,
+              "enabled": true,
+              "fields": [
+                {
+                  "name": "id",
+                  "type": "number",
+                  "index": true,
+                  "include_in_all": false,
+                  "store": true,
+                  "docvalues": true
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}
