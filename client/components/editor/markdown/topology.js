@@ -40,33 +40,26 @@ function renderWrappedTopology(md, token) {
   return `<div${md.renderer.renderAttrs(token)}>${token.content}</div>`
 }
 
-function parseTopologySource(input, options = {}) {
-  const { allowJavaScript = true } = options
+function parseTopologySource(input) {
   const source = input.trim()
 
   if (!source) {
     throw new Error('Topology source is empty.')
   }
 
+  // Strict JSON only. This previously fell back to `Function(source)()`, which ran
+  // page content as JavaScript in the editor's own origin: opening a page for edit
+  // was enough to execute whatever its author had written.
   try {
     return JSON.parse(source)
   } catch (jsonError) {
-    if (!allowJavaScript) {
-      throw new SyntaxError(`Topology source is not valid JSON: ${jsonError.message}`)
-    }
+    throw new SyntaxError(`Topology source is not valid JSON: ${jsonError.message}`)
   }
-
-  // Preview runs in the editor browser context, so we use the same object-literal
-  // fallback behavior expected by the server-side renderer.
-  // eslint-disable-next-line no-new-func
-  return Function(`"use strict"; return (${source});`)()
 }
 
 function renderTopologyBlock(md, source, options) {
   try {
-    const data = parseTopologySource(source, {
-      allowJavaScript: options.allowJavaScript
-    })
+    const data = parseTopologySource(source)
     return topologyUi.render_cluster_html(data, {
       assetRoot: options.assetRoot
     })
@@ -89,7 +82,6 @@ module.exports = {
       const closeMarker = opts.closeMarker || '```'
       const closeChar = closeMarker.charCodeAt(0)
       const assetRoot = opts.assetRoot || '/_assets/topology-ui/images'
-      const allowJavaScript = opts.allowJavaScript !== false
 
       md.block.ruler.before('fence', 'couchbase_topology', (state, startLine, endLine, silent) => {
         let nextLine
@@ -183,10 +175,7 @@ module.exports = {
           ...closeLineAttrs,
           ...standaloneLineAttrs
         ])
-        token.content = renderTopologyBlock(md, source, {
-          allowJavaScript,
-          assetRoot
-        })
+        token.content = renderTopologyBlock(md, source, { assetRoot })
         token.map = [startLine, nextLine + (consumedStandaloneAttrs ? 1 : 0)]
         token.markup = markup
 
@@ -199,7 +188,6 @@ module.exports = {
 
       md.renderer.rules.couchbase_topology = (tokens, idx) => renderWrappedTopology(md, tokens[idx])
     }, {
-      allowJavaScript: conf.allowJavaScript,
       assetRoot: conf.assetRoot,
       openMarker: conf.openMarker,
       closeMarker: conf.closeMarker

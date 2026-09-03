@@ -48,7 +48,6 @@ module.exports = {
       const closeMarker = opts.closeMarker || '```'
       const closeChar = closeMarker.charCodeAt(0)
       const assetRoot = opts.assetRoot || '/_assets/topology-ui/images'
-      const allowJavaScript = opts.allowJavaScript !== false
 
       md.block.ruler.before('fence', 'couchbase_topology', (state, startLine, endLine, silent) => {
         let nextLine
@@ -142,10 +141,7 @@ module.exports = {
           ...closeLineAttrs,
           ...standaloneLineAttrs
         ])
-        token.content = renderTopologyBlock(md, source, {
-          allowJavaScript,
-          assetRoot
-        })
+        token.content = renderTopologyBlock(md, source, { assetRoot })
         token.map = [startLine, nextLine + (consumedStandaloneAttrs ? 1 : 0)]
         token.markup = markup
 
@@ -158,7 +154,6 @@ module.exports = {
 
       md.renderer.rules.couchbase_topology = (tokens, idx) => renderWrappedTopology(md, tokens[idx])
     }, {
-      allowJavaScript: conf.allowJavaScript,
       assetRoot: conf.assetRoot,
       openMarker: conf.openMarker,
       closeMarker: conf.closeMarker
@@ -168,8 +163,12 @@ module.exports = {
 
 function renderTopologyBlock(md, source, options) {
   try {
+    // Explicitly false, never from config. @couchbaselabs/topology-ui defaults this
+    // to TRUE when the key is absent, and when true it evaluates a non-JSON body via
+    // vm.runInNewContext. There is no legitimate reason to execute page content, so
+    // the option is not exposed and cannot be re-enabled by an admin or a stored row.
     const data = topologyUi.parseTopologySource(source, {
-      allowJavaScript: options.allowJavaScript
+      allowJavaScript: false
     })
     return topologyUi.renderTopology(data, {
       assetRoot: options.assetRoot

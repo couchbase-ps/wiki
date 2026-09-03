@@ -5,15 +5,30 @@ const VEGA_LITE_VERSION = '6.4.3'
 const VEGA_EMBED_VERSION = '7.1.0'
 
 const CDN_BASE = 'https://cdn.jsdelivr.net/npm'
+// Subresource integrity, computed with `openssl dgst -sha384` over the exact pinned
+// files. Without these the browser executes whatever the CDN returns for these URLs, in
+// this wiki's own origin. Regenerate when bumping a version, or the script stops loading.
 const VEGA_SCRIPTS = [
-  { url: `${CDN_BASE}/vega@${VEGA_VERSION}/build/vega.min.js`, global: 'vega' },
-  { url: `${CDN_BASE}/vega-lite@${VEGA_LITE_VERSION}/build/vega-lite.min.js`, global: 'vegaLite' },
-  { url: `${CDN_BASE}/vega-embed@${VEGA_EMBED_VERSION}/build/vega-embed.min.js`, global: 'vegaEmbed' }
+  {
+    url: `${CDN_BASE}/vega@${VEGA_VERSION}/build/vega.min.js`,
+    global: 'vega',
+    integrity: 'sha384-0Wc8+KeboSkAq/fK81pd4uFbWKu4ouB+y4KWCYxlC69hRWol7vnc6zZSruXOtc0F'
+  },
+  {
+    url: `${CDN_BASE}/vega-lite@${VEGA_LITE_VERSION}/build/vega-lite.min.js`,
+    global: 'vegaLite',
+    integrity: 'sha384-9/70gNCfOu6G7xXvkdreMfuqAEsoaGJVXV2BN/JLRXkSmcGvnMqtsRx8HZtUWAvI'
+  },
+  {
+    url: `${CDN_BASE}/vega-embed@${VEGA_EMBED_VERSION}/build/vega-embed.min.js`,
+    global: 'vegaEmbed',
+    integrity: 'sha384-giTAWqsEDsWuWzWKi6NCvjgwi160SClnTYYXWPLuy/DnaQTqmk4soinrpxcCS4dx'
+  }
 ]
 
 let vegaEmbedPromise = null
 
-function loadScript(url) {
+function loadScript(url, integrity) {
   return new Promise((resolve, reject) => {
     const existing = document.querySelector(`script[data-vega-cdn="${url}"]`)
     if (existing) {
@@ -28,6 +43,8 @@ function loadScript(url) {
     const script = document.createElement('script')
     script.src = url
     script.async = false
+    script.integrity = integrity
+    script.crossOrigin = 'anonymous'
     script.dataset.vegaCdn = url
     script.addEventListener('load', () => {
       script.dataset.loaded = 'true'
@@ -43,8 +60,8 @@ async function loadVegaEmbed() {
     return vegaEmbedPromise
   }
   vegaEmbedPromise = (async () => {
-    for (const { url, global } of VEGA_SCRIPTS) {
-      await loadScript(url)
+    for (const { url, global, integrity } of VEGA_SCRIPTS) {
+      await loadScript(url, integrity)
       if (typeof window[global] === 'undefined') {
         throw new Error(`Loaded ${url} but ${global} global is undefined`)
       }

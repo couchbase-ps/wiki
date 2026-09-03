@@ -1,6 +1,6 @@
 key: markdownCouchbaseTopology
 title: Couchbase Topology
-description: Render Couchbase topology diagrams from JSON or JavaScript object literal blocks
+description: Render Couchbase topology diagrams from strict JSON blocks
 author: Couchbase
 icon: mdi-server-network
 enabledDefault: true
@@ -26,11 +26,4 @@ props:
     title: Close Marker
     hint: String to use as closing delimiter.
     order: 3
-    public: true
-  allowJavaScript:
-    type: Boolean
-    default: true
-    title: Allow JavaScript Object Literals
-    hint: When disabled, only strict JSON payloads are accepted.
-    order: 4
     public: true

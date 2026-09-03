@@ -4,6 +4,8 @@ const RENDERED_ATTR = 'data-infographic-rendered'
 
 const INFOGRAPHIC_VERSION = '0.2.19'
 const CDN_URL = `https://cdn.jsdelivr.net/npm/@antv/infographic@${INFOGRAPHIC_VERSION}/dist/infographic.min.js`
+// Subresource integrity over the exact pinned file. Regenerate on a version bump.
+const CDN_INTEGRITY = 'sha384-yIMmVGR7iq/lwiw1nxM0HBFtQop+F1gGc+5CyobDbz6P7sp+SJSSblD7rLkCj0Sd'
 const GLOBAL_NAME = 'AntVInfographic'
 
 const ALLOWED_OPT_KEYS = new Set(['width', 'height', 'theme'])
@@ -25,6 +27,8 @@ function loadScript(url) {
     const script = document.createElement('script')
     script.src = url
     script.async = false
+    script.integrity = CDN_INTEGRITY
+    script.crossOrigin = 'anonymous'
     script.dataset.infographicCdn = url
     script.addEventListener('load', () => {
       script.dataset.loaded = 'true'
