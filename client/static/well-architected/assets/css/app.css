@@ -33,6 +33,69 @@ body {
     min-height: 100vh;
 }
 
+.page-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: var(--spacing-lg);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.page-tab {
+    margin: 0;
+    padding: 10px 14px;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    background: transparent;
+    color: var(--color-muted);
+    font-weight: 600;
+}
+
+.page-tab:hover {
+    background: transparent;
+    color: var(--color-text);
+}
+
+.page-tab.is-active {
+    color: var(--color-primary);
+    border-bottom-color: var(--color-primary);
+}
+
+.guide h2 {
+    margin: 0 0 var(--spacing-md);
+    font-size: 22px;
+    font-weight: 600;
+}
+
+.guide p,
+.guide li {
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--color-text);
+}
+
+.guide p { margin: 0 0 var(--spacing-md); }
+
+.guide ol,
+.guide ul {
+    margin: 0 0 var(--spacing-md);
+    padding-left: 1.2em;
+}
+
+.guide li + li { margin-top: var(--spacing-sm); }
+
+.guide h3 {
+    margin: var(--spacing-lg) 0 var(--spacing-sm);
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.guide li ul {
+    margin-top: var(--spacing-sm);
+    margin-bottom: 0;
+}
+
 .sidebar {
     border-right: 1px solid var(--color-border);
     padding: var(--spacing-lg);
@@ -79,7 +142,40 @@ body {
     letter-spacing: 0.5px;
 }
 
-.content { padding: 0; min-width: 0; }
+.content {
+    padding: 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.site-footer {
+    margin-top: auto;
+    padding: var(--spacing-lg) var(--spacing-xl);
+    border-top: 1px solid var(--color-border);
+    background: var(--color-bg);
+    color: var(--color-muted);
+    font-size: 13px;
+    text-align: center;
+}
+
+.site-footer p {
+    margin: 0;
+}
+
+.site-footer p + p {
+    margin-top: 4px;
+}
+
+.site-footer a {
+    color: var(--color-primary);
+    text-decoration: none;
+}
+
+.site-footer a:hover {
+    text-decoration: underline;
+}
 
 .container {
     max-width: 960px;
@@ -186,12 +282,120 @@ body {
     color: var(--color-muted);
 }
 
-.toolbar {
-    margin-bottom: var(--spacing-lg);
+.review-card {
+    margin-bottom: var(--spacing-xl);
+    padding: var(--spacing-lg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-bg);
+}
+
+.review-card-head {
     display: flex;
-    gap: var(--spacing-md);
     align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+}
+
+.review-card-head h2 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.review-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px 20px;
+}
+
+.review-card .field {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    min-width: 0;
+}
+
+.review-card .field > span {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-muted);
+    letter-spacing: 0.2px;
+}
+
+.field-type {
+    grid-column: 1 / -1;
+}
+
+.review-card input[type="text"] {
+    display: block;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    flex: none;
+    box-sizing: border-box;
+}
+
+.type-choices {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.type-choice {
+    position: relative;
+    display: block;
+    margin: 0;
+}
+
+.type-choice input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.type-choice span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    padding: 8px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-size: 14px;
+    font-weight: 600;
+    text-align: center;
+    cursor: pointer;
+}
+
+.type-choice input:checked + span {
+    color: #ffffff;
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+.type-choice input:focus-visible + span {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+.review-actions {
+    display: flex;
     flex-wrap: wrap;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-lg);
+    padding-top: var(--spacing-md);
+    border-top: 1px solid var(--color-border-light);
+}
+
+@media (max-width: 720px) {
+    .review-fields,
+    .type-choices { grid-template-columns: 1fr; }
 }
 
 .save-hint {
@@ -228,12 +432,58 @@ body {
     margin-bottom: var(--spacing-xs);
 }
 
-.practice {
-    display: block;
-    margin: var(--spacing-sm) 0;
-    font-size: 14px;
-    color: var(--color-text);
-}
+        .practice {
+            display: flex;
+            align-items: flex-start;
+            gap: var(--spacing-sm);
+            margin: var(--spacing-sm) 0;
+            font-size: 14px;
+            color: var(--color-text);
+        }
+
+        .question-meta { margin-bottom: var(--spacing-sm); }
+
+        .guidance {
+            margin: 0 0 var(--spacing-sm);
+            font-size: 14px;
+            color: var(--color-text);
+        }
+
+        .anti-patterns {
+            margin: 0 0 var(--spacing-md);
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-radius: var(--radius);
+            background: #fff8f8;
+            border: 1px solid #ffc9c9;
+            font-size: 13px;
+        }
+
+        .anti-patterns span {
+            display: block;
+            margin-bottom: var(--spacing-xs);
+            color: var(--color-high);
+            font-weight: 600;
+        }
+
+        .anti-patterns ul { margin: 0; padding-left: var(--spacing-lg); }
+
+        .also-relevant,
+        .option-guidance {
+            display: block;
+            margin-top: 2px;
+            color: var(--color-muted);
+            font-size: 12px;
+        }
+
+        select {
+            min-width: 180px;
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-radius: var(--radius);
+            border: 1px solid var(--color-border);
+            background: var(--color-bg);
+            color: var(--color-text);
+            font-size: 14px;
+        }
 
 .none-option {
     margin-top: var(--spacing-md);

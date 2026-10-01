@@ -20,7 +20,56 @@ function generateReviewId() {
 }
 
 function defaultDraft() {
-    return { workloadName: '', reviewName: '', currentPillarId: null, answers: {} };
+    return {
+        customerName: '',
+        reviewerName: '',
+        workloadName: '',
+        deploymentModel: 'self-managed',
+        currentPillarId: null,
+        answers: {}
+    };
+}
+
+function currentDeployment() {
+    const selected = document.querySelector('input[name="deploymentType"]:checked');
+    return selected?.value || loadDraft().deploymentModel || 'self-managed';
+}
+
+function setDeployment(value) {
+    const radio = document.querySelector(`input[name="deploymentType"][value="${value}"]`);
+    if (radio) radio.checked = true;
+}
+
+function applicableOptions(question) {
+    const deployment = currentDeployment();
+    return (question.options || []).filter(opt => !opt.appliesTo || opt.appliesTo.length === 0 || opt.appliesTo.includes(deployment));
+}
+
+function visibleQuestions(pillar) {
+    return (pillar.questions || []).filter(question => applicableOptions(question).length > 0);
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+function deploymentLabel(value) {
+    const names = {
+        capella: 'Capella',
+        'self-managed': 'Self-managed Server',
+        operator: 'Autonomous Operator'
+    };
+    return names[value] || value || '';
+}
+
+function audienceLabel(audience) {
+    const names = { platform: 'Platform', app: 'Application', security: 'Security' };
+    const list = Array.isArray(audience) ? audience : (audience ? [audience] : []);
+    return list.map(name => names[name] || name).join(' · ');
 }
 
 function loadDraft() {
@@ -57,8 +106,10 @@ function persistCurrentPillarAnswers() {
 
 function persistMetaFields() {
     const draft = loadDraft();
+    draft.customerName = document.getElementById('customerName').value;
+    draft.reviewerName = document.getElementById('reviewerName').value;
     draft.workloadName = document.getElementById('workloadName').value;
-    draft.reviewName = document.getElementById('reviewName').value;
+    draft.deploymentModel = currentDeployment();
     draft.currentPillarId = currentPillarId;
     saveDraft(draft);
 }
@@ -108,15 +159,31 @@ let didInit = false;
 function doInit(markdown) {
     if (didInit) return;
     didInit = true;
-    if (typeof markdown === 'string' && markdown.length > 0) {
+    const editing = typeof markdown === 'string' && markdown.length > 0;
+    if (editing) {
         try { draftState = parseWafState(markdown); } catch (err) { console.error('parseWafState failed', err); }
     }
     const draft = loadDraft();
+    document.getElementById('customerName').value = draft.customerName || '';
+    document.getElementById('reviewerName').value = draft.reviewerName || '';
     document.getElementById('workloadName').value = draft.workloadName || '';
-    document.getElementById('reviewName').value = draft.reviewName || '';
+    setDeployment(draft.deploymentModel || 'self-managed');
     renderSidebar();
     const startId = draft.currentPillarId || pillars[0]?.id;
     if (startId) showPillar(startId);
+    // Editing an existing review opens straight on the Review tab.
+    selectTab(editing ? 'review' : 'about');
+}
+
+function selectTab(name) {
+    document.querySelectorAll('.page-tab').forEach(button => {
+        const active = button.dataset.tab === name;
+        button.classList.toggle('is-active', active);
+        button.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    document.querySelectorAll('[data-panel]').forEach(panel => {
+        panel.hidden = panel.dataset.panel !== name;
+    });
 }
 
 // Parse the hidden `<!-- waf-state:BASE64 -->` line back into a draft object.
@@ -155,6 +222,7 @@ function showPillar(pillarId) {
         persistCurrentPillarAnswers();
     }
     currentPillarId = pillarId;
+    selectTab('review');
     const pillar = pillars.find(p => p.id === pillarId);
     if (!pillar) return;
 
@@ -167,17 +235,28 @@ function showPillar(pillarId) {
         <div class="title-wrap">
             ${pillarIcon(pillar.id, 'pillar-page-icon')}
             <div class="title-copy">
-                <h1>${pillar.name}</h1>
-                <p>${pillar.description || ''}</p>
+                <h1>${escapeHtml(pillar.name)}</h1>
+                <p>${escapeHtml(pillar.description || '')}</p>
             </div>
         </div>
-        ${pillar.questions.map(q => `
+        ${visibleQuestions(pillar).map(q => `
             <section class="question-card" data-pillar-id="${pillar.id}" data-question-id="${q.id}">
                 <div class="question-code">${formatQuestionCode(q.id)}</div>
-                <h3>${q.title}</h3>
-                <p>${q.description || ''}</p>
-                ${(q.options && q.options.length > 0 ? q.options : (q.bestPractices || []).map(bp => ({ id: bp, label: bp }))).map(opt => `
-                    <label class="practice"><input class="practice-option" type="checkbox" value="${opt.id || opt.label}"> ${opt.label}</label>
+                <h3>${escapeHtml(q.title)}</h3>
+                ${audienceLabel(q.audience) ? `<div class="question-meta"><span class="chip">Audience: ${escapeHtml(audienceLabel(q.audience))}</span></div>` : ''}
+                <p>${escapeHtml(q.description || '')}</p>
+                ${q.guidance ? `<p class="guidance"><strong>Guidance.</strong> ${escapeHtml(q.guidance)}</p>` : ''}
+                ${(q.antiPatterns || []).length ? `<div class="anti-patterns"><span>Common anti-patterns</span><ul>${q.antiPatterns.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div>` : ''}
+                ${applicableOptions(q).map(opt => `
+                    <label class="practice">
+                        <input class="practice-option" type="checkbox" value="${escapeHtml(opt.id || opt.label)}">
+                        <span>
+                            ${escapeHtml(opt.label)}
+                            ${(opt.alsoRelevantTo || []).length ? `<span class="also-relevant">Also relevant to ${escapeHtml(opt.alsoRelevantTo.join(', '))}</span>` : ''}
+                            ${opt.optional ? `<span class="option-guidance">Only if this applies to the workload. Leaving it unchecked is not a finding.</span>` : ''}
+                            ${opt.guidance ? `<span class="option-guidance">${escapeHtml(opt.guidance)}</span>` : ''}
+                        </span>
+                    </label>
                 `).join('')}
                 <div class="none-option">
                     <label><input class="none-option-checkbox" type="checkbox" value="none"> None of these</label>
@@ -213,18 +292,19 @@ function formatQuestionCode(questionId) {
 }
 
 function getSelectedOptions(question, answer) {
-    const options = question.options || [];
+    const options = applicableOptions(question);
     if (!answer || answer.noneOfThese) return [];
     const selected = new Set((answer.selectedPractices || []).map(v => (v || '').toLowerCase()));
     return options.filter(opt => selected.has((opt.id || '').toLowerCase()) || selected.has((opt.label || '').toLowerCase()));
 }
 
 function getMissingOptions(question, selectedIds) {
-    const options = question.options || [];
+    const options = applicableOptions(question);
     const selected = new Set((selectedIds || []).map(v => (v || '').toLowerCase()));
     return options.filter(opt => {
         const id = (opt.id || '').toLowerCase();
         const label = (opt.label || '').toLowerCase();
+        if (opt.optional) return false;
         return !selected.has(id) && !selected.has(label);
     });
 }
@@ -276,10 +356,11 @@ function getGroupedRisksBySeverity(risks) {
 }
 
 function getCoverage(selectedIds, question) {
-    const totalOptions = (question.options || []).length;
+    const options = applicableOptions(question);
+    const totalOptions = options.length;
     const selectedSet = new Set((selectedIds || []).map(v => (v || '').toLowerCase()));
     let selectedCount = 0;
-    (question.options || []).forEach(opt => {
+    options.forEach(opt => {
         const id = (opt.id || '').toLowerCase();
         const label = (opt.label || '').toLowerCase();
         if (selectedSet.has(id) || selectedSet.has(label)) selectedCount += 1;
@@ -314,8 +395,8 @@ function buildQuestionResult(question, answer) {
     };
 }
 
-function getPillarSummary(pillar, answerByQuestionId) {
-    const results = (pillar.questions || []).map(q => buildQuestionResult(q, answerByQuestionId[q.id]));
+    function getPillarSummary(pillar, answerByQuestionId) {
+        const results = visibleQuestions(pillar).map(q => buildQuestionResult(q, answerByQuestionId[q.id]));
     const allRisks = results.flatMap(r => r.risks);
     const allImprovements = results.flatMap(r => r.improvements);
     const grouped = getGroupedRisksBySeverity(allRisks);
@@ -333,13 +414,13 @@ function getPillarSummary(pillar, answerByQuestionId) {
     };
 }
 
-function processReview(workloadName, reviewName, answers) {
+function processReview(details, answers) {
     let highRiskCount = 0;
     let mediumRiskCount = 0;
     let lowRiskCount = 0;
 
     for (const pillar of pillars) {
-        for (const question of (pillar.questions || [])) {
+        for (const question of visibleQuestions(pillar)) {
             const answer = answers.find(a => a.pillarId === pillar.id && a.questionId === question.id);
             if (!answer) continue;
             const result = buildQuestionResult(question, answer);
@@ -349,7 +430,7 @@ function processReview(workloadName, reviewName, answers) {
         }
     }
 
-    const totalQuestions = pillars.reduce((sum, p) => sum + (p.questions?.length || 0), 0);
+    const totalQuestions = pillars.reduce((sum, pillar) => sum + visibleQuestions(pillar).length, 0);
     const now = new Date();
     const lastUpdatedDisplay = now.toLocaleString('en-US', {
         month: 'long', day: 'numeric', year: 'numeric',
@@ -359,8 +440,11 @@ function processReview(workloadName, reviewName, answers) {
 
     return {
         reviewId: generateReviewId(),
-        workloadName,
-        reviewName,
+        customerName: details.customerName,
+        reviewerName: details.reviewerName,
+        workloadName: details.workloadName,
+        deploymentModel: details.deploymentModel,
+        deploymentLabel: deploymentLabel(details.deploymentModel),
         lastUpdatedDisplay,
         answeredQuestions: answers.length,
         totalQuestions,
@@ -458,16 +542,18 @@ function buildWafMarkdown() {
     const draft = loadDraft();
     const answers = Object.values(draft.answers);
     const answerByQuestionId = Object.fromEntries(answers.map(a => [a.questionId, a]));
-    const summary = processReview(draft.workloadName, draft.reviewName, answers);
+    const summary = processReview(draft, answers);
     const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(draft))));
 
     const lines = [];
     lines.push(`<!-- ${STATE_MARKER}${b64} -->`);
     lines.push('');
-    lines.push('# Couchbase Well-Architected Framework');
+    lines.push(`# ${draft.workloadName || 'Well-Architected Tool'}`);
     lines.push('');
-    lines.push(`**Workload:** ${draft.workloadName || '—'}  `);
-    lines.push(`**Review:** ${draft.reviewName || '—'}`);
+    lines.push(`- **Customer:** ${draft.customerName || ''}`);
+    lines.push(`- **Reviewer:** ${draft.reviewerName || ''}`);
+    lines.push(`- **Workload:** ${draft.workloadName || ''}`);
+    lines.push(`- **Type:** ${deploymentLabel(draft.deploymentModel)}`);
     lines.push('');
     lines.push('## Overview');
     lines.push('');
@@ -532,7 +618,7 @@ function bindExclusiveOptions() {
 
 function clearReview() {
     const hasDraft = loadDraft();
-    const hasContent = hasDraft.workloadName || hasDraft.reviewName || Object.keys(hasDraft.answers).length > 0;
+    const hasContent = hasDraft.customerName || hasDraft.reviewerName || hasDraft.workloadName || Object.keys(hasDraft.answers).length > 0;
     if (hasContent && !confirm('Start a new review? This clears the current workload, answers, and results.')) {
         return;
     }
@@ -541,8 +627,10 @@ function clearReview() {
     lastReportContext = null;
     currentPillarId = null;
 
+    document.getElementById('customerName').value = '';
+    document.getElementById('reviewerName').value = '';
     document.getElementById('workloadName').value = '';
-    document.getElementById('reviewName').value = '';
+    setDeployment('self-managed');
     document.getElementById('result').style.display = 'none';
     document.getElementById('result').innerHTML = '';
     document.getElementById('saveReview').disabled = true;
@@ -562,14 +650,22 @@ function clearReview() {
 
 function submitReview() {
     persistMetaFields();
-    const workloadName = document.getElementById('workloadName').value.trim();
-    const reviewName = document.getElementById('reviewName').value.trim();
-    if (!workloadName) {
-        alert('Please enter workload name');
+    const details = {
+        customerName: document.getElementById('customerName').value.trim(),
+        reviewerName: document.getElementById('reviewerName').value.trim(),
+        workloadName: document.getElementById('workloadName').value.trim(),
+        deploymentModel: currentDeployment()
+    };
+    if (!details.customerName) {
+        alert('Please enter the customer name');
         return;
     }
-    if (!reviewName) {
-        alert('Please enter review name');
+    if (!details.reviewerName) {
+        alert('Please enter the reviewer name');
+        return;
+    }
+    if (!details.workloadName) {
+        alert('Please enter the workload name');
         return;
     }
 
@@ -579,7 +675,7 @@ function submitReview() {
         return;
     }
 
-    const result = processReview(workloadName, reviewName, answers);
+    const result = processReview(details, answers);
     const resultBox = document.getElementById('result');
     resultBox.style.display = 'block';
     const answerByQuestionId = Object.fromEntries(answers.map(a => [a.questionId, a]));
@@ -589,8 +685,7 @@ function submitReview() {
         : [];
     const activePillarSummary = pillarsDashboard.length > 0 ? pillarsDashboard[0].pillarSummary : null;
     lastReportContext = {
-        workloadName,
-        reviewName,
+        ...details,
         pillar: selectedPillar,
         pillarSummary: activePillarSummary,
         generatedAt: result.lastUpdatedDisplay
@@ -602,8 +697,10 @@ function submitReview() {
         <div class="overview-actions">
             <button class="btn-secondary" type="button" onclick="document.getElementById('result').style.display='none'">Continue reviewing</button>
         </div>
-        <div><span class="result-key">Workload</span> ${result.workloadName}</div>
-        <div><span class="result-key">Review</span> ${result.reviewName}</div>
+        <div><span class="result-key">Customer</span> ${escapeHtml(result.customerName)}</div>
+        <div><span class="result-key">Reviewer</span> ${escapeHtml(result.reviewerName)}</div>
+        <div><span class="result-key">Workload</span> ${escapeHtml(result.workloadName)}</div>
+        <div><span class="result-key">Type</span> ${escapeHtml(result.deploymentLabel)}</div>
         <div><span class="result-key">Last updated</span> ${result.lastUpdatedDisplay}</div>
         <div><span class="result-key">Overall questions answered</span> ${result.answeredQuestions}/${result.totalQuestions}</div>
         <div><span class="result-key">Overall risks - High risk</span> <span class="risk-high">${result.highRiskCount}</span></div>
@@ -667,10 +764,20 @@ function submitReview() {
     `;
 }
 
+document.querySelectorAll('.page-tab').forEach(button => {
+    button.addEventListener('click', () => selectTab(button.dataset.tab));
+});
 document.getElementById('submitReview').addEventListener('click', submitReview);
 document.getElementById('clearReview').addEventListener('click', clearReview);
-document.getElementById('workloadName').addEventListener('input', persistMetaFields);
-document.getElementById('reviewName').addEventListener('input', persistMetaFields);
+document.querySelectorAll('input[name="deploymentType"]').forEach(input => {
+    input.addEventListener('change', () => {
+        persistMetaFields();
+        if (currentPillarId) showPillar(currentPillarId);
+    });
+});
+['customerName', 'reviewerName', 'workloadName'].forEach(id => {
+    document.getElementById(id).addEventListener('input', persistMetaFields);
+});
 document.getElementById('saveReview').addEventListener('click', () => {
     if (!lastReportContext) {
         alert('Submit a review first before saving.');
