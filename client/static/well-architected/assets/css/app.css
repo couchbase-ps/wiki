@@ -77,6 +77,54 @@ body {
 
 .guide p { margin: 0 0 var(--spacing-md); }
 
+.guide-figure {
+    margin: 0 0 var(--spacing-lg);
+}
+
+.pillar-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--spacing-sm) var(--spacing-lg);
+    margin: 0 0 var(--spacing-md);
+}
+
+.pillar-list dt {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+.pillar-list dd {
+    margin: 2px 0 0;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--color-muted);
+}
+
+.guide h2.guide-section {
+    margin-top: var(--spacing-xl, 32px);
+    padding-top: var(--spacing-lg);
+    border-top: 1px solid var(--color-border-light);
+}
+
+.guide-note {
+    font-size: 13px;
+    color: var(--color-muted);
+}
+
+@media (max-width: 720px) {
+    .pillar-list { grid-template-columns: 1fr; }
+}
+
+.guide-figure img {
+    display: block;
+    width: 100%;
+    max-width: 860px;
+    height: auto;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+}
+
 .guide ol,
 .guide ul {
     margin: 0 0 var(--spacing-md);
@@ -663,6 +711,7 @@ button:disabled {
 .chip-high { border-color: #ffc9c9; color: var(--color-high); background: #fff8f8; }
 .chip-medium { border-color: #f0d9a8; color: var(--color-medium); background: #fffbf0; }
 .chip-low { border-color: #b6e4c6; color: var(--color-low); background: #f6fff9; }
+.chip-unanswered { border-color: var(--color-border); color: var(--color-muted); background: #fafafa; }
 
 .section-title {
     margin: var(--spacing-md) 0 var(--spacing-xs);
@@ -686,6 +735,7 @@ button:disabled {
 
 .status-good { color: var(--color-low); font-weight: 600; }
 .status-review { color: var(--color-high); font-weight: 600; }
+.status-unanswered { color: var(--color-muted); font-weight: 600; }
 
 .pillars-grid { display: grid; gap: var(--spacing-md); margin-top: var(--spacing-md); }
 
@@ -709,6 +759,16 @@ button:disabled {
     display: flex;
     flex-wrap: wrap;
     gap: var(--spacing-sm);
+}
+
+.markdown-notice {
+    margin: 0 0 var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border: 1px solid #f0d9a8;
+    border-radius: var(--radius);
+    background: #fffbf0;
+    color: var(--color-medium);
+    font-size: 13px;
 }
 
 .markdown-output {

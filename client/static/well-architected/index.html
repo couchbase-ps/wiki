@@ -6,7 +6,7 @@
     <title>Couchbase Well-Architected Assessment Tool</title>
     <link rel="icon" href="assets/couchbase-logo.png" type="image/png" sizes="32x32"/>
     <link rel="apple-touch-icon" href="assets/couchbase-logo.png"/>
-    <link rel="stylesheet" href="assets/css/app.css?v=12"/>
+    <link rel="stylesheet" href="assets/css/app.css?v=17"/>
 </head>
 <body>
 <div class="layout">
@@ -26,31 +26,43 @@
             <div class="page-tabs" role="tablist">
                 <button class="page-tab is-active" type="button" role="tab" data-tab="about" aria-selected="true">About</button>
                 <button class="page-tab" type="button" role="tab" data-tab="howto" aria-selected="false">How to</button>
-                <button class="page-tab" type="button" role="tab" data-tab="describe" aria-selected="false">Describe</button>
-                <button class="page-tab" type="button" role="tab" data-tab="review" aria-selected="false">Review</button>
+                <button class="page-tab" type="button" role="tab" data-tab="review" aria-selected="false">Assessment</button>
             </div>
 
             <section class="guide" data-panel="about">
-                <h2>About this review</h2>
-                <p>This page is a checklist for one Couchbase database. You fill it in with the team. Tick the things you already do.</p>
-                <p>At the start you say where Couchbase runs:</p>
+                <h2>The Couchbase Well-Architected Framework</h2>
+                <figure class="guide-figure">
+                    <img src="assets/img/well-architected-pillars.png" alt="Couchbase Well-Architected Framework: six pillars (Operational Excellence, Security, Reliability, Performance Efficiency, Cost Optimization, Data Management and Consistency) standing on the foundation of Couchbase architecture and best practices"/>
+                </figure>
+                <p>Six pillars describe what a well-run Couchbase workload looks like. Together they cover how it is operated, protected, kept available, kept fast, paid for, and kept correct.</p>
+                <dl class="pillar-list">
+                    <div><dt>Operational Excellence</dt><dd>Monitoring, rebalances, upgrades, configuration as code, runbooks, SDK lifecycle, and readiness to work with Support.</dd></div>
+                    <div><dt>Security</dt><dd>Role-based access, audit, network exposure, encryption, credentials, secure SQL++, and TLS certificates.</dd></div>
+                    <div><dt>Reliability</dt><dd>Replicas and server groups, auto-failover, backups and disaster recovery, disk and capacity headroom, and how the application handles timeouts and retries.</dd></div>
+                    <div><dt>Performance Efficiency</dt><dd>Key-Value first access, document design, covering indexes, prepared statements, service sizing, and storage engine choice.</dd></div>
+                    <div><dt>Cost Optimization</dt><dd>Cost visibility, access-pattern review before adding nodes, right-sizing, index and storage hygiene, and idle environments.</dd></div>
+                    <div><dt>Data Management and Consistency</dt><dd>Durability, CAS, scopes and collections, expiry, scan consistency, transactions, and XDCR conflict resolution.</dd></div>
+                </dl>
+                <p class="guide-note">Couchbase Mobile and vector search are outside the scope of this assessment.</p>
+
+                <h2 class="guide-section">The assessment tool</h2>
+                <p>This tool turns the six pillars into a conversation about one workload. For each practice, your team answers one question: <strong>do we do this today?</strong> The result is a prioritized list of what is solid, what is exposed, and what to do next, aligned with Couchbase documentation.</p>
+                <h3>What you get</h3>
                 <ul>
-                    <li><strong>Capella</strong> — Couchbase hosts the cluster.</li>
-                    <li><strong>Self-managed Server</strong> — you run Couchbase Server on your own machines.</li>
-                    <li><strong>Autonomous Operator</strong> — Couchbase runs on Kubernetes.</li>
+                    <li><strong>Prioritized recommendations</strong>, rated high, medium, or low, each with a concrete next step.</li>
+                    <li><strong>A baseline</strong> to run again after changes, or before a migration or major release.</li>
+                    <li><strong>A report you can share</strong>, written for the customer, saved in the wiki page.</li>
                 </ul>
-                <p>The checklist changes with that choice. A Capella review does not ask about Linux settings, because you do not manage those machines.</p>
-                <p>This page never logs into your cluster. It does not read data and it does not change settings. You answer from what the team knows.</p>
-                <p>When you finish, you save a report into the wiki page: what is missing, how serious it is, and what to do next. The page also keeps your answers, so you can open the review again from the editor and change it.</p>
+                <p>Questions adapt to where Couchbase runs: <strong>Capella</strong>, <strong>self-managed Server</strong>, or the <strong>Autonomous Operator</strong>. Nothing connects to your cluster. The wiki page keeps your answers, so you can open the assessment again from the editor and change it.</p>
             </section>
 
             <section class="guide" data-panel="howto" hidden>
                 <h2>How to use it</h2>
                 <p>Do these three steps in order. Your answers stay in this window until you click <strong>Save to Wiki</strong>. If you click <strong>Close</strong> before you save, you lose them.</p>
 
-                <h3>Step 1. Open Review and fill in the names</h3>
+                <h3>Step 1. Open Assessment and fill in the names</h3>
                 <ol>
-                    <li>Click the <strong>Review</strong> tab at the top.</li>
+                    <li>Click the <strong>Assessment</strong> tab at the top.</li>
                     <li>In <strong>Customer name</strong>, type who the review is for. Example: Acme Retail.</li>
                     <li>In <strong>Reviewer name</strong>, type your name.</li>
                     <li>In <strong>Workload</strong>, type the application you are reviewing. Example: Orders API.</li>
@@ -70,7 +82,7 @@
                     <li>Read the question.</li>
                     <li>Look at <strong>Audience</strong>. It says who should answer: Platform, Application, or Security.</li>
                     <li>Tick a box if you already do that thing.</li>
-                    <li>Leave a box empty if you do not do it. The report will list it as something to fix.</li>
+                    <li>Leave a box empty if you do not do it. The report will list it as something to fix. A question with nothing ticked is treated as not answered and is not scored; tick <strong>None of these</strong> if you do none of them.</li>
                     <li>If a box says <strong>Only if this applies</strong>, leave it empty when you do not use that feature. That empty box is not a problem.</li>
                     <li>Use <strong>Notes</strong> when you want to explain a choice. Example: We have one site only.</li>
                     <li>Click the next pillar on the left and do the same. You can skip one and come back.</li>
@@ -83,31 +95,14 @@
                     <li>Click <strong>Save to Wiki</strong>. The report goes into the wiki page at the cursor.</li>
                     <li>Save the wiki page.</li>
                 </ol>
-                <p>To change the review later, open the page in the editor and click <strong>Edit Well-Architected Assessment Tool</strong>.</p>
+                <p>To change the assessment later, open the page in the editor and click <strong>Edit Well-Architected Assessment Tool</strong>.</p>
                 <p>To review a different application, click <strong>Start New Review</strong>. That clears the answers in this window. It does not change your Couchbase cluster.</p>
-            </section>
-
-            <section class="guide" data-panel="describe" hidden>
-                <h2>What the questions cover</h2>
-                <p>There are six groups. The last one is Data Management and Consistency: durability, CAS, expiry, and what happens when two clusters both accept writes. Mobile and vector search are not part of this review.</p>
-                <h3>Operational Excellence</h3>
-                <p>Someone can see resident ratio, a failed rebalance, and a slow query before users report it. Upgrades swap one node at a time. On Linux you run yourself, swappiness is 1 and transparent huge pages are off.</p>
-                <h3>Security</h3>
-                <p>Each service has its own database user. The password is not in source control. The SDK connects with <code>couchbases://</code> and checks the certificate. Administrators sign in through the company directory, not a shared local account.</p>
-                <h3>Reliability</h3>
-                <p>Production has at least three nodes, replicas, and copies in different racks or zones. Two server groups can add an arbiter in a third group so failover still has a majority. Backups have been restored once, not only scheduled.</p>
-                <h3>Performance Efficiency</h3>
-                <p>A document you already know by id is a key-value call. Frequent SQL++ uses an index that fits in the Index service memory. Capella uses Magma. On Server 8, Magma is the usual engine when the bucket is larger than memory. Couchstore still fits a bucket that stays in RAM.</p>
-                <h3>Cost Optimization</h3>
-                <p>You look at the access pattern before you add nodes. Development and test clusters on Capella are not left running all night.</p>
-                <h3>Data Management and Consistency</h3>
-                <p>Writes that must survive a node loss use a durability level the topology can meet. Concurrent updates use CAS. The XDCR conflict mode is chosen when the bucket is created, and every bucket in that replication uses the same mode.</p>
             </section>
 
             <div data-panel="review" hidden>
             <section class="review-card">
                 <div class="review-card-head">
-                    <h2>Review details</h2>
+                    <h2>Assessment details</h2>
                     <span id="saveHint" class="save-hint"></span>
                 </div>
                 <div class="review-fields">
@@ -153,11 +148,11 @@
             </div>
         </div>
         <footer class="site-footer">
-            <p>Hatim Heffoudhi · Well-Architected Framework · v1</p>
+            <p>Made with &hearts; by Hatim, Karthik, Tayeb · Well-Architected Framework · v1.4</p>
             <p><a href="https://github.com/couchbase-ps/couchbase-well-architected-framework">github.com/couchbase-ps/couchbase-well-architected-framework</a></p>
         </footer>
     </main>
 </div>
-<script src="assets/js/app.js?v=16"></script>
+<script src="assets/js/app.js?v=24"></script>
 </body>
 </html>
