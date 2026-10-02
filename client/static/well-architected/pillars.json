@@ -2,7 +2,7 @@
   {
     "id": "operational-excellence",
     "name": "Operational Excellence (OPS)",
-    "description": "Operate, monitor, and continuously improve Couchbase cluster operations to deliver business value and mitigate risks.",
+    "description": "Operate, monitor, upgrade, and continuously improve Couchbase clusters and the applications that use them.",
     "questions": [
       {
         "id": "ops-1",
@@ -17,15 +17,15 @@
               "risks": [
                 {
                   "id": "ops-risk-visibility",
-                  "severity": "high",
-                  "reason": "If nobody watches resident ratio, the bucket can fall out of memory and start reading from disk before anyone notices."
+                  "severity": "medium",
+                  "reason": "The resident ratio shows how much of a bucket's data is held in memory. When it falls, Couchbase starts serving reads from disk and latency rises. Without a view of resident ratio, throughput, and latency, this change is usually noticed by users before the team."
                 }
               ],
               "improvements": [
                 {
                   "id": "ops-improvement-metrics",
                   "title": "Monitor the Data Service",
-                  "description": "Alert on resident ratio, Key-Value throughput, and latency for each service. A falling resident ratio means the working set no longer fits in memory."
+                  "description": "We recommend a dashboard and alerts on resident ratio, Key-Value operations per second, and read and write latency per bucket. These are available in the Couchbase Web Console, on the Prometheus metrics endpoint of each node, and in the Capella monitoring views. A steadily falling resident ratio is the earliest sign that the data no longer fits in the memory quota."
                 }
               ]
             }
@@ -37,15 +37,15 @@
               "risks": [
                 {
                   "id": "ops-risk-monitoring",
-                  "severity": "medium",
-                  "reason": "Metrics that stay inside the Couchbase UI are hard to compare with application latency during an incident."
+                  "severity": "low",
+                  "reason": "Metrics that live only in the Couchbase Web Console cannot be placed next to application latency during an incident, so it is hard to tell whether a slow request comes from the application or from the database."
                 }
               ],
               "improvements": [
                 {
                   "id": "ops-improvement-observability",
                   "title": "Centralize cluster metrics",
-                  "description": "Scrape the Prometheus metrics endpoint, or use Capella's metrics integration, and send the data to the same system as the applications."
+                  "description": "Consider sending cluster metrics to the same monitoring system as the applications. Couchbase Server exposes a Prometheus-compatible metrics endpoint on every node, and Capella offers a metrics endpoint that can be scraped as well. One shared timeline makes incident analysis much faster."
                 }
               ]
             },
@@ -60,15 +60,15 @@
               "risks": [
                 {
                   "id": "ops-risk-query",
-                  "severity": "medium",
-                  "reason": "A slow SQL++ query can use a large share of Query Service CPU and never appear in the application logs."
+                  "severity": "low",
+                  "reason": "The Query Service keeps a record of slow statements in system:completed_requests, but it only helps when someone reviews it. A slow SQL++ query can consume a large share of Query Service CPU without ever appearing in the application logs."
                 }
               ],
               "improvements": [
                 {
                   "id": "ops-improvement-logging",
-                  "title": "Record slow SQL++ queries",
-                  "description": "Use system:completed_requests, or the completed-request threshold, and review the slow statements."
+                  "title": "Record and review slow SQL++ queries",
+                  "description": "Consider keeping the completed-requests threshold at a value that matches your latency goals and reviewing system:completed_requests regularly, for example after each deployment and whenever query latency changes. Each entry shows the statement, its duration, and the client context id when the application sets one."
                 }
               ]
             },
@@ -84,14 +84,14 @@
                 {
                   "id": "ops-risk-detection",
                   "severity": "high",
-                  "reason": "Auto-failover and a failed rebalance need a person. A dashboard that nobody watches does not page anyone."
+                  "reason": "Couchbase can fail over a node automatically, but a person still has to find the cause, rebalance, and restore the lost replicas. A rebalance that fails, or memory and disk that run out, also need a person. A dashboard that nobody watches does not page anyone."
                 }
               ],
               "improvements": [
                 {
                   "id": "ops-improvement-alerting",
-                  "title": "Page on cluster failures",
-                  "description": "Alert on node-down, low bucket memory headroom, failed rebalance, and a configuration change that does not finish."
+                  "title": "Page a person on cluster failures",
+                  "description": "We recommend alerts that page someone for a node going down, an auto-failover, a failed rebalance, low bucket memory headroom, and low disk space. Couchbase Server includes email alerts for these events and Capella offers alert notifications; both can be forwarded to the on-call tool you already use."
                 }
               ]
             }
@@ -114,15 +114,15 @@
               "risks": [
                 {
                   "id": "ops-risk-rebalance",
-                  "severity": "high",
-                  "reason": "A rebalance moves data across the network and disk. Doing that at peak adds load to the nodes that are still serving traffic."
+                  "severity": "medium",
+                  "reason": "A rebalance moves vBuckets and index data between nodes over the network and disk. During peak traffic it competes with the application for the same CPU, disk, and network, so both the rebalance and the application slow down."
                 }
               ],
               "improvements": [
                 {
                   "id": "ops-improvement-rebalance",
                   "title": "Plan the rebalance window",
-                  "description": "Schedule node additions and removals outside the peak, and watch the rebalance until it finishes."
+                  "description": "Consider scheduling node additions and removals in a quiet window and keeping someone watching until the rebalance reports complete. If a rebalance must be interrupted, it can be stopped from the Web Console and started again later; the data already moved stays in place."
                 }
               ]
             }
@@ -135,14 +135,14 @@
                 {
                   "id": "ops-risk-delta",
                   "severity": "low",
-                  "reason": "A full recovery copies the whole data set again. Delta recovery copies only what changed, when the node's files are still valid."
+                  "reason": "When a node comes back after a short outage, a full recovery copies the entire data set to it again. Delta recovery reuses the data files still on the node and copies only what changed, which makes the rebalance much shorter."
                 }
               ],
               "improvements": [
                 {
                   "id": "ops-improvement-delta",
-                  "title": "Prefer delta recovery for a short outage",
-                  "description": "Choose delta recovery when the node still has its data. Use full recovery when the disk was replaced or the files are not trusted."
+                  "title": "Prefer delta recovery after a short outage",
+                  "description": "When a node has been down briefly and its disk is intact, consider choosing delta recovery before rebalancing. Full recovery remains the right choice when the disk was replaced or the files cannot be trusted."
                 }
               ]
             },
@@ -156,35 +156,35 @@
               "risks": [
                 {
                   "id": "ops-risk-instability",
-                  "severity": "medium",
-                  "reason": "Each topology change starts a rebalance. A series of small changes keeps the cluster moving data for a long time."
+                  "severity": "low",
+                  "reason": "Every topology change starts its own rebalance. Adding or removing nodes one at a time over several days keeps the cluster moving data for a long time and extends the period of higher load."
                 }
               ],
               "improvements": [
                 {
                   "id": "ops-improvement-batching",
                   "title": "Batch topology changes",
-                  "description": "Add or remove the nodes you already know you need in one change, then let that rebalance finish."
+                  "description": "Where possible, consider adding or removing all the nodes you already know you need in a single change, and letting that one rebalance finish before planning the next."
                 }
               ]
             }
           },
           {
             "id": "ops2-tasks",
-            "label": "Watch rebalance, index build, and warmup until they finish",
+            "label": "Check that rebalance, index builds, and warmup have finished before the next change",
             "ifNotSelected": {
               "risks": [
                 {
                   "id": "ops-risk-tasks",
                   "severity": "low",
-                  "reason": "A rebalance or index build that looks idle in the UI can still be running. The next change should wait until it finishes."
+                  "reason": "A rebalance, an index build, or a warmup can still be running even when the Web Console looks idle. Starting the next change while the previous one is in progress slows both and can make the second change fail."
                 }
               ],
               "improvements": [
                 {
                   "id": "ops-improvement-tasks",
-                  "title": "Check the task list before the next change",
-                  "description": "On self-managed Server, use the tasks endpoint or the UI activity list. On Capella, use the activity view for the cluster."
+                  "title": "Check running tasks before the next change",
+                  "description": "Before the next topology change, consider checking the tasks list in the Web Console (or the /pools/default/tasks REST endpoint) and confirming that rebalance is complete, indexes are online, and warmup has finished."
                 }
               ]
             },
@@ -195,6 +195,29 @@
               "self-managed",
               "operator"
             ]
+          },
+          {
+            "id": "ops2-post-failover",
+            "label": "After a failover, rebalance or recover the node so the replicas are rebuilt",
+            "ifNotSelected": {
+              "risks": [
+                {
+                  "id": "ops-risk-post-failover",
+                  "severity": "high",
+                  "reason": "After a failover, the replicas that were promoted to active are not recreated. Until a rebalance runs, part of the data has fewer copies than configured, and a second failure can lose data."
+                }
+              ],
+              "improvements": [
+                {
+                  "id": "ops-imp-post-failover",
+                  "title": "Rebalance after every failover",
+                  "description": "Consider adding 'rebalance after failover' to the incident procedure: fix or replace the node, choose delta or full recovery, and rebalance so the configured number of replicas exists again. The Autonomous Operator handles this step automatically, and Capella manages node recovery for you."
+                }
+              ]
+            },
+            "alsoRelevantTo": [
+              "Reliability"
+            ]
           }
         ],
         "audience": [
@@ -204,7 +227,7 @@
       {
         "id": "ops-3",
         "title": "How do you automate Couchbase deployments and configuration management?",
-        "description": "Treat infrastructure as code to reduce manual toil and ensure consistency across database environments.",
+        "description": "Clusters, buckets, indexes, and settings are defined in code and deployed through a pipeline.",
         "type": "multi_select",
         "options": [
           {
@@ -214,15 +237,15 @@
               "risks": [
                 {
                   "id": "ops-risk-iac",
-                  "severity": "high",
-                  "reason": "Settings changed only in the UI drift between environments and cannot be rebuilt the same way."
+                  "severity": "medium",
+                  "reason": "Settings changed only in the Web Console are not reviewed and are easy to forget. Over time the environments drift apart, and a cluster cannot be rebuilt the same way after a failure."
                 }
               ],
               "improvements": [
                 {
                   "id": "ops-improvement-iac",
                   "title": "Keep cluster configuration in code",
-                  "description": "Use Terraform, Ansible, the Operator, or the Capella API so buckets, memory quotas, and roles are reviewed like application code."
+                  "description": "Consider describing clusters, buckets, memory quotas, users, and roles in code, for example with the Capella Terraform provider, the Autonomous Operator resources, Ansible, or the REST API. Reviewed configuration is easier to audit and to rebuild."
                 }
               ]
             }
@@ -235,14 +258,14 @@
                 {
                   "id": "ops-risk-operator",
                   "severity": "medium",
-                  "reason": "A Couchbase cluster on Kubernetes that is not managed by the Autonomous Operator is upgraded, failed over, and rebalanced by hand."
+                  "reason": "On Kubernetes without the Autonomous Operator, upgrades, failover, and rebalance have to be done by hand, and a pod restart can leave the cluster in an unexpected state."
                 }
               ],
               "improvements": [
                 {
                   "id": "ops-improvement-operator",
                   "title": "Use the Autonomous Operator",
-                  "description": "Let the Operator create the pods, run upgrades, and perform failover and rebalance. Do not operate the cluster with ad-hoc kubectl commands."
+                  "description": "We recommend running Couchbase on Kubernetes through the Couchbase Autonomous Operator, which creates the pods, keeps the cluster at the declared size, and performs upgrades, failover, and rebalance. Direct changes with kubectl are best kept for diagnosis only."
                 }
               ]
             },
@@ -260,15 +283,15 @@
               "risks": [
                 {
                   "id": "ops-risk-cicd",
-                  "severity": "high",
-                  "reason": "Manually applying index definitions in production bypasses peer review and can lock up query services if applied incorrectly."
+                  "severity": "medium",
+                  "reason": "Index definitions applied by hand, or created by a framework when the application starts, skip peer review. A poorly chosen index can slow writes and use Index Service memory for a long time before anyone notices."
                 }
               ],
               "improvements": [
                 {
                   "id": "ops-improvement-cicd",
-                  "title": "Integrate database changes into pipelines",
-                  "description": "Store SQL++ index definitions next to the application and apply them in the pipeline. Do not let a framework create indexes on startup."
+                  "title": "Deploy index definitions from the pipeline",
+                  "description": "Consider keeping CREATE INDEX statements in source control next to the application and applying them from the deployment pipeline. It also helps to turn off any framework option that creates indexes automatically at startup."
                 }
               ]
             },
@@ -283,15 +306,15 @@
               "risks": [
                 {
                   "id": "ops-risk-versioning",
-                  "severity": "medium",
-                  "reason": "Without version control, rolling back an erroneous cluster setting or identifying who made a change during an incident is nearly impossible."
+                  "severity": "low",
+                  "reason": "When memory quotas, bucket settings, and XDCR configuration exist only in the cluster, it is difficult to know what changed, when, and by whom, and there is no easy way back to a known good configuration."
                 }
               ],
               "improvements": [
                 {
                   "id": "ops-improvement-versioning",
-                  "title": "Version control operational settings",
-                  "description": "Maintain a source-of-truth repository for all cluster tuning parameters, memory quotas, and cross-datacenter replication (XDCR) setups."
+                  "title": "Version the operational settings",
+                  "description": "Consider keeping a versioned record of cluster settings: memory quotas per service, bucket settings such as replicas and storage engine, auto-failover settings, and XDCR replications. The REST API and the Capella Management API make it practical to export the current settings and compare them."
                 }
               ]
             }
@@ -304,14 +327,14 @@
                 {
                   "id": "ops-risk-mocks",
                   "severity": "medium",
-                  "reason": "Mocks hide durability, timeout, and consistency behaviour that only appears against a real cluster."
+                  "reason": "A mocked database does not reproduce durability, timeouts, scan consistency, or CAS behavior. Problems that only occur against a real cluster then appear in production."
                 }
               ],
               "improvements": [
                 {
                   "id": "ops-imp-tests",
-                  "title": "Test against Couchbase in the pipeline",
-                  "description": "Run the critical paths in Docker, Testcontainers, or a Capella development cluster before release."
+                  "title": "Test against a real Couchbase instance",
+                  "description": "Consider running the critical paths against a real Couchbase instance in the pipeline, for example with the official Docker image, Testcontainers, or a Capella development cluster."
                 }
               ]
             }
@@ -325,7 +348,7 @@
       {
         "id": "ops-4",
         "title": "How do you respond to operational events and database incidents?",
-        "description": "Establish standardized procedures to investigate and resolve issues quickly while minimizing human error.",
+        "description": "Written procedures for failover, node replacement, restore, and investigation, so incidents are handled the same way every time.",
         "type": "multi_select",
         "options": [
           {
@@ -335,15 +358,15 @@
               "risks": [
                 {
                   "id": "ops-risk-runbooks",
-                  "severity": "high",
-                  "reason": "During an incident, an unclear step is how a graceful failover becomes a hard failover, or a restore restores the wrong bucket."
+                  "severity": "medium",
+                  "reason": "A failover or restore done under pressure without a written procedure is where mistakes happen: a graceful failover becomes a hard failover, or a restore targets the wrong bucket."
                 }
               ],
               "improvements": [
                 {
                   "id": "ops-improvement-runbooks",
                   "title": "Write the cluster runbooks",
-                  "description": "Document graceful failover, hard failover, node replacement, and restore, including who is allowed to run each one."
+                  "description": "We recommend written procedures for graceful failover, hard failover, adding a replacement node, recovery (delta or full), and restoring from backup, with the roles allowed to run each step. Testing them once in a non-production cluster makes them trustworthy."
                 }
               ]
             }
@@ -355,15 +378,15 @@
               "risks": [
                 {
                   "id": "ops-risk-playbooks",
-                  "severity": "medium",
-                  "reason": "Without a shared sequence, two people troubleshoot the same incident in different orders and lose time."
+                  "severity": "low",
+                  "reason": "Without an agreed sequence of checks, two people investigating the same incident look in different places, and time is lost before the real cause is found."
                 }
               ],
               "improvements": [
                 {
                   "id": "ops-improvement-playbooks",
                   "title": "Write the investigation steps",
-                  "description": "Start from the symptom: query timeouts, indexer CPU, disk queue, or replication lag, and list the first checks."
+                  "description": "Consider a short investigation guide per symptom: slow SQL++ queries (system:completed_requests and EXPLAIN), high Index Service memory or CPU, a growing disk write queue, and XDCR lag. Each guide lists the first metrics and logs to look at."
                 }
               ]
             }
@@ -375,15 +398,15 @@
               "risks": [
                 {
                   "id": "ops-risk-postmortem",
-                  "severity": "medium",
-                  "reason": "If a serious incident is closed without a written cause and a change, the same failure is likely to happen again."
+                  "severity": "low",
+                  "reason": "When a serious incident is closed without a written cause and a follow-up change, the same failure tends to come back."
                 }
               ],
               "improvements": [
                 {
                   "id": "ops-improvement-postmortem",
                   "title": "Review serious incidents",
-                  "description": "After a serious outage, write the timeline, the cause, and the change that should prevent a repeat."
+                  "description": "After a serious outage, it helps to record the timeline, the root cause, and the change that should prevent a repeat, and to track that change to completion."
                 }
               ]
             }
@@ -401,20 +424,20 @@
         "options": [
           {
             "id": "ops5-rolling",
-            "label": "Upgrade online with a swap rebalance, not a full restart",
+            "label": "Upgrade online with a swap rebalance, one node at a time",
             "ifNotSelected": {
               "risks": [
                 {
                   "id": "ops-risk-rolling",
                   "severity": "high",
-                  "reason": "Restarting every node at once takes the cluster offline. Couchbase upgrades an online cluster by swapping nodes."
+                  "reason": "Restarting every node at once takes the whole cluster offline. Couchbase Server is designed to be upgraded one node at a time while the cluster keeps serving traffic."
                 }
               ],
               "improvements": [
                 {
                   "id": "ops-improvement-rolling",
-                  "title": "Swap in the new version",
-                  "description": "Add a node on the target version with the same services, remove one old node, and rebalance. Repeat. From 7.1 or 7.2 to 7.6.0 or 7.6.1, Index nodes must use this swap rebalance."
+                  "title": "Upgrade online with a swap rebalance",
+                  "description": "The usual approach is a swap rebalance: add a node on the new version with the same services, remove one old node, rebalance, and repeat. For upgrades from 7.1 or 7.2 to 7.6.0 or 7.6.1, Index Service nodes must be upgraded this way. On Capella and with the Autonomous Operator, the online upgrade is performed for you."
                 }
               ]
             },
@@ -430,14 +453,14 @@
                 {
                   "id": "ops-risk-sdk",
                   "severity": "high",
-                  "reason": "An SDK that is too old for the new server can fail to connect or can fail specific operations after the upgrade."
+                  "reason": "Each SDK release supports a documented range of server versions. An SDK that is too old for the new server may fail to connect or may fail on specific operations after the upgrade."
                 }
               ],
               "improvements": [
                 {
                   "id": "ops-improvement-sdk",
                   "title": "Match the SDK to the server version",
-                  "description": "Compare each application's SDK version with the compatibility matrix for the target server version before the upgrade starts."
+                  "description": "Before the server upgrade, consider comparing each application's SDK version with the compatibility table in the SDK documentation for the target server version, and planning SDK upgrades first where needed."
                 }
               ]
             }
@@ -449,15 +472,15 @@
               "risks": [
                 {
                   "id": "ops-risk-staging",
-                  "severity": "high",
-                  "reason": "A server upgrade can change a query plan. A test that does not run the production queries will not show that."
+                  "severity": "medium",
+                  "reason": "A server upgrade can change how a SQL++ query is planned. A test that does not run the production queries and data shape will not reveal a plan that became slower."
                 }
               ],
               "improvements": [
                 {
                   "id": "ops-improvement-staging",
                   "title": "Test the upgrade with production-like work",
-                  "description": "Restore a recent backup, or a masked copy, and run the important queries and writes against the target version."
+                  "description": "Consider restoring a recent backup, or a masked copy, into a test cluster on the target version and running the important queries and write paths against it before the production upgrade."
                 }
               ]
             }
@@ -470,14 +493,14 @@
                 {
                   "id": "ops-risk-validation",
                   "severity": "medium",
-                  "reason": "An upgrade can finish in the UI while an index is still building or an application is returning new errors."
+                  "reason": "An upgrade can look finished in the Web Console while an index is still building or an application has started returning new errors."
                 }
               ],
               "improvements": [
                 {
                   "id": "ops-improvement-validation",
                   "title": "Check the cluster after the upgrade",
-                  "description": "Confirm rebalance is complete, indexes are online, and the application's error rate is back to normal."
+                  "description": "After the upgrade, it helps to confirm that the rebalance is complete, all indexes are online, replication is healthy, and the application error rate and latency are back to their normal level."
                 }
               ]
             }
@@ -489,15 +512,15 @@
               "risks": [
                 {
                   "id": "ops-risk-sdk-eol",
-                  "severity": "high",
-                  "reason": "Checking the compatibility matrix only at server upgrade time leaves applications on an SDK that is already out of support."
+                  "severity": "medium",
+                  "reason": "Couchbase publishes a support window for each SDK version. Checking only at server upgrade time leaves applications on SDK releases that are already out of support and missing fixes."
                 }
               ],
               "improvements": [
                 {
                   "id": "ops-imp-sdk-lifecycle",
                   "title": "Track SDK versions like any other runtime",
-                  "description": "Record the SDK version in each service, compare it with the published support window, and schedule upgrades."
+                  "description": "Consider recording the SDK version used by each service, comparing it with the published SDK support window, and scheduling upgrades like any other runtime dependency."
                 }
               ]
             },
@@ -513,19 +536,43 @@
                 {
                   "id": "ops-risk-sdk-cve",
                   "severity": "medium",
-                  "reason": "A supported server version does not mean the application SDK is free of published vulnerabilities."
+                  "reason": "A supported server version does not mean the application's SDK and its dependencies are free of published vulnerabilities."
                 }
               ],
               "improvements": [
                 {
                   "id": "ops-imp-sdk-cve",
                   "title": "Include the SDK in dependency scanning",
-                  "description": "Run the same vulnerability scan used for other libraries against the Couchbase SDK and the drivers it pulls in."
+                  "description": "Consider including the Couchbase SDK and the libraries it pulls in within the same dependency vulnerability scan used for the rest of the application."
                 }
               ]
             },
             "alsoRelevantTo": [
               "Security"
+            ]
+          },
+          {
+            "id": "ops5-supported-version",
+            "label": "Run a Couchbase Server version that is still within its support lifecycle",
+            "ifNotSelected": {
+              "risks": [
+                {
+                  "id": "ops-risk-supported-version",
+                  "severity": "high",
+                  "reason": "Every Couchbase Server release has a published end-of-maintenance and end-of-life date. A version past those dates no longer receives fixes or security patches, and support options are limited."
+                }
+              ],
+              "improvements": [
+                {
+                  "id": "ops-imp-supported-version",
+                  "title": "Stay on a supported version",
+                  "description": "Consider checking the current version against the Couchbase Enterprise Software Support Policy and planning the next upgrade before the end-of-maintenance date. Capella clusters are kept on supported versions for you."
+                }
+              ]
+            },
+            "appliesTo": [
+              "self-managed",
+              "operator"
             ]
           }
         ],
@@ -537,7 +584,7 @@
       {
         "id": "ops-6",
         "title": "How do you continually evaluate and improve your Couchbase operations?",
-        "description": "Establish continuous feedback loops to optimize processes, improve efficiency, and reduce operational toil over time.",
+        "description": "Regular reviews of indexes, sizing, and operational trends, together with the application team.",
         "type": "multi_select",
         "options": [
           {
@@ -548,14 +595,14 @@
                 {
                   "id": "ops-risk-audits",
                   "severity": "low",
-                  "reason": "Accumulating legacy data structures and redundant indexes slowly degrades cluster efficiency and increases backup storage footprints."
+                  "reason": "Unused indexes and forgotten buckets keep using memory, disk, and backup space, and every index still has to be updated on each write."
                 }
               ],
               "improvements": [
                 {
                   "id": "ops-improvement-audits",
-                  "title": "Implement operational cleanup routines",
-                  "description": "Periodically review query catalogs and system metrics to identify and drop unused secondary indexes or deprecated development buckets."
+                  "title": "Review unused indexes and buckets",
+                  "description": "Consider a periodic review of index usage, for example through the system:indexes catalog and the index statistics in the Web Console, and removing indexes and buckets that no longer serve an active query or application."
                 }
               ]
             }
@@ -567,15 +614,15 @@
               "risks": [
                 {
                   "id": "ops-risk-feedback",
-                  "severity": "medium",
-                  "reason": "Operating the database in a silo prevents operations teams from understanding upcoming application schema changes or shifting query access patterns."
+                  "severity": "low",
+                  "reason": "When the operations team does not hear about upcoming features, new query patterns and data growth arrive without the indexes and capacity they need."
                 }
               ],
               "improvements": [
                 {
                   "id": "ops-improvement-feedback",
-                  "title": "Align operations with development roadmaps",
-                  "description": "Conduct regular technical reviews with developers to align index design, query optimization, and cluster capacity with upcoming application features."
+                  "title": "Review the roadmap with the application team",
+                  "description": "Consider a regular review with the application team to look at upcoming queries, document changes, and expected growth, so index design and capacity can be planned ahead."
                 }
               ]
             }
@@ -587,15 +634,15 @@
               "risks": [
                 {
                   "id": "ops-risk-metrics-review",
-                  "severity": "medium",
-                  "reason": "Without tracking historical operational data, it is impossible to know if process changes are successfully reducing downtime or improving query latencies."
+                  "severity": "low",
+                  "reason": "Without a history of incidents, failed queries, and latency, there is no way to tell whether the changes made are actually reducing downtime or improving performance."
                 }
               ],
               "improvements": [
                 {
                   "id": "ops-improvement-metrics-review",
-                  "title": "Perform operations metrics reviews",
-                  "description": "Hold recurring reviews of historical metrics to identify long-term trends, prioritize technical debt reduction, and validate previous improvements."
+                  "title": "Review operational trends",
+                  "description": "Consider keeping a few operational measures over time, such as time to recover from incidents, failed or slow queries, and latency at the busiest hour, and reviewing their trend on a regular basis."
                 }
               ]
             }
@@ -608,14 +655,14 @@
                 {
                   "id": "ops-risk-rightsize",
                   "severity": "medium",
-                  "reason": "Assuming a static capacity model prevents the organization from optimizing costs or scaling ahead of predictable traffic growth."
+                  "reason": "A cluster sized once and never reviewed is either paying for capacity it does not use or heading toward a limit that nobody is tracking."
                 }
               ],
               "improvements": [
                 {
                   "id": "ops-improvement-rightsize",
-                  "title": "Iteratively assess cluster sizing",
-                  "description": "Routinely analyze CPU, memory, and IOPS consumption against baseline expectations to safely downscale over-provisioned nodes or scale up bottlenecks."
+                  "title": "Review cluster sizing on a schedule",
+                  "description": "Consider reviewing CPU, memory, disk, and resident ratio per service on a schedule and comparing them with the Couchbase sizing guidelines, so nodes can be added before a limit is reached or removed when they are not needed."
                 }
               ]
             }
@@ -641,15 +688,15 @@
               "risks": [
                 {
                   "id": "ops-risk-otel",
-                  "severity": "medium",
-                  "reason": "Cluster dashboards do not show time spent in the SDK. A slow request then cannot be split into application time and database time."
+                  "severity": "low",
+                  "reason": "Cluster dashboards show time spent inside Couchbase, not time spent in the application or on the network. Without SDK tracing a slow request cannot be split into application time and database time."
                 }
               ],
               "improvements": [
                 {
                   "id": "ops-imp-otel",
-                  "title": "Trace the SDK call",
-                  "description": "Enable the SDK tracer and meter and export them with the rest of the service. OpenTelemetry is the usual path."
+                  "title": "Trace the SDK calls",
+                  "description": "Consider enabling the SDK's OpenTelemetry tracing and metrics support and exporting them with the rest of the service. Each Couchbase operation then appears as a span in the same trace as the application code."
                 }
               ]
             }
@@ -661,15 +708,15 @@
               "risks": [
                 {
                   "id": "ops-risk-threshold",
-                  "severity": "medium",
-                  "reason": "The SDK already records slow and orphaned responses. They are useless if nobody reads them."
+                  "severity": "low",
+                  "reason": "The SDK already records operations that exceed a latency threshold and responses that arrive after the operation timed out (orphaned responses). These reports are valuable during an incident but are often never read."
                 }
               ],
               "improvements": [
                 {
                   "id": "ops-imp-threshold",
-                  "title": "Put threshold logging on the operational checklist",
-                  "description": "Ship SDK threshold and orphan logs to the same place as application logs and review them after an incident."
+                  "title": "Review SDK threshold and orphan logs",
+                  "description": "Consider shipping the SDK's threshold and orphan logging output to the same place as application logs, and including them in the first checks after an incident."
                 }
               ]
             }
@@ -682,14 +729,14 @@
                 {
                   "id": "ops-risk-ping",
                   "severity": "medium",
-                  "reason": "A process that cannot reach the cluster still receives traffic when readiness only checks that the process is up."
+                  "reason": "When readiness only checks that the process is running, a service that cannot reach the cluster still receives traffic and fails every request."
                 }
               ],
               "improvements": [
                 {
                   "id": "ops-imp-ping",
                   "title": "Fail readiness when the cluster is unreachable",
-                  "description": "Call the SDK ping or diagnostics endpoint before the process is marked ready."
+                  "description": "Consider using the SDK ping or diagnostics call in the readiness check, so the service is only marked ready when it can reach the Couchbase services it depends on."
                 }
               ]
             }
@@ -702,14 +749,14 @@
                 {
                   "id": "ops-risk-context",
                   "severity": "low",
-                  "reason": "A slow query on the server cannot be tied to the application request unless both sides share an id."
+                  "reason": "A slow query seen on the server side cannot be linked to the application request that sent it unless both sides share an identifier."
                 }
               ],
               "improvements": [
                 {
                   "id": "ops-imp-context",
                   "title": "Pass the request id into SQL++",
-                  "description": "Set client_context_id from the application request or trace id on each query."
+                  "description": "Consider setting the client_context_id query option from the application's request or trace id. The value then appears in system:completed_requests and in the query logs."
                 }
               ]
             }
@@ -738,14 +785,14 @@
                 {
                   "id": "ops8-swappiness-risk",
                   "severity": "high",
-                  "reason": "Most Linux systems default to 60, so they swap Couchbase memory even when RAM is still free."
+                  "reason": "Most Linux distributions default vm.swappiness to 60, which lets the kernel swap Couchbase memory to disk even when RAM is still available. Swapped memory makes Key-Value operations unpredictably slow."
                 }
               ],
               "improvements": [
                 {
                   "id": "ops8-swappiness-imp",
                   "title": "Set swappiness before the node joins the cluster",
-                  "description": "Set vm.swappiness to 1 and keep it in the image or the automation that builds nodes. Leave a modest amount of swap so the kernel can avoid killing the process, and do not treat swap as extra RAM."
+                  "description": "Couchbase recommends vm.swappiness set to 1 on current kernels, and to 0 only on kernels older than 3.5. It helps to apply the setting in the image or automation that builds nodes so it survives a reboot."
                 }
               ]
             },
@@ -761,14 +808,14 @@
                 {
                   "id": "ops8-thp-risk",
                   "severity": "high",
-                  "reason": "Transparent huge pages can stall Couchbase and can lead to the process being killed."
+                  "reason": "Transparent huge pages are enabled by default on many Linux distributions. Couchbase documents that they can cause memory and CPU stalls and recommends turning them off on every node."
                 }
               ],
               "improvements": [
                 {
                   "id": "ops8-thp-imp",
                   "title": "Disable transparent huge pages on every Couchbase machine",
-                  "description": "Set both enabled and defrag to never, including after reboot. On Kubernetes, set this on the host. Containers do not use swap, so swappiness does not apply there."
+                  "description": "We recommend setting transparent_hugepage enabled and defrag to never, and making the change persistent across reboots, for example through a systemd unit or a tuned profile. On Kubernetes this is a setting on the worker node, not in the pod."
                 }
               ]
             },
@@ -776,6 +823,108 @@
               "self-managed",
               "operator"
             ]
+          },
+          {
+            "id": "ops8-ntp",
+            "label": "Keep the clocks of all nodes synchronized with NTP",
+            "ifNotSelected": {
+              "risks": [
+                {
+                  "id": "ops-risk-ntp",
+                  "severity": "medium",
+                  "reason": "Couchbase relies on the node clock for document expiry and for timestamp-based XDCR conflict resolution. Nodes whose clocks drift apart can expire documents at the wrong time or keep the wrong version of a document."
+                }
+              ],
+              "improvements": [
+                {
+                  "id": "ops-imp-ntp",
+                  "title": "Synchronize clocks with NTP",
+                  "description": "Consider running an NTP client on every node, pointing all nodes (and both clusters, when XDCR is used) at the same reference time servers, and monitoring clock drift."
+                }
+              ]
+            },
+            "appliesTo": [
+              "self-managed",
+              "operator"
+            ],
+            "alsoRelevantTo": [
+              "Data Management & Consistency"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "ops-9",
+        "title": "How prepared are you to work with Couchbase Support?",
+        "description": "The support plan, the way to open a ticket, and how to collect logs are known before an incident, not during it.",
+        "type": "multi_select",
+        "audience": [
+          "platform"
+        ],
+        "options": [
+          {
+            "id": "ops9-plan",
+            "label": "Know your support plan, severity levels, and how to open a ticket",
+            "ifNotSelected": {
+              "risks": [
+                {
+                  "id": "ops9-plan-risk",
+                  "severity": "low",
+                  "reason": "During an outage, time is lost finding out who holds the support contract, which severity to use, and where to open the ticket."
+                }
+              ],
+              "improvements": [
+                {
+                  "id": "ops9-plan-imp",
+                  "title": "Record the support path in the runbooks",
+                  "description": "Consider recording the support plan, the severity definitions, and the ticket URL in the runbooks. Capella includes a Support section in the UI; Couchbase Server customers use the Couchbase Support portal."
+                }
+              ]
+            }
+          },
+          {
+            "id": "ops9-collect",
+            "label": "Know how to collect diagnostics from every node (Collect Information or cbcollect_info)",
+            "ifNotSelected": {
+              "risks": [
+                {
+                  "id": "ops9-collect-risk",
+                  "severity": "low",
+                  "reason": "A support investigation starts with the logs from every node. Collecting them for the first time during an incident, on a cluster that is already under pressure, delays the analysis."
+                }
+              ],
+              "improvements": [
+                {
+                  "id": "ops9-collect-imp",
+                  "title": "Practice log collection before you need it",
+                  "description": "Consider trying log collection once in advance: in the Web Console under Logs > Collect Information, or with the cbcollect_info tool on each node. The archive can be uploaded directly to Couchbase Support from the collection dialog."
+                }
+              ]
+            },
+            "appliesTo": [
+              "self-managed",
+              "operator"
+            ]
+          },
+          {
+            "id": "ops9-inventory",
+            "label": "Keep a current record of versions, topology, buckets, and SDKs in use",
+            "ifNotSelected": {
+              "risks": [
+                {
+                  "id": "ops9-inventory-risk",
+                  "severity": "low",
+                  "reason": "Support and your own team need the server version and edition, the services on each node, the bucket settings, and the SDK versions. Without that record, every incident starts by rediscovering it."
+                }
+              ],
+              "improvements": [
+                {
+                  "id": "ops9-inventory-imp",
+                  "title": "Keep a cluster fact sheet",
+                  "description": "Consider keeping a short, current record per cluster: server version and edition, node count and services per node, buckets with replicas and storage engine, and the SDK version of each application."
+                }
+              ]
+            }
           }
         ]
       }
@@ -784,12 +933,12 @@
   {
     "id": "security",
     "name": "Security (SEC)",
-    "description": "Protect access controls, data structures, and key material across Couchbase deployments.",
+    "description": "Protect identities, network access, data in transit and at rest, certificates, and application credentials.",
     "questions": [
       {
         "id": "sec-1",
         "title": "How do you manage identities and permissions for people and machines accessing Couchbase?",
-        "description": "Centralize identity management and enforce the principle of least privilege across all database interactions.",
+        "description": "Administrators sign in through the company directory, and every user has only the permissions it needs.",
         "type": "multi_select",
         "options": [
           {
@@ -799,15 +948,15 @@
               "risks": [
                 {
                   "id": "sec-risk-central-id-capella",
-                  "severity": "high",
-                  "reason": "Local Capella users that are not tied to the company identity provider stay behind when people change roles."
+                  "severity": "medium",
+                  "reason": "Local Capella accounts that are not tied to the company identity provider are easy to leave behind when people change roles or leave. Access reviews then depend on memory rather than on the directory."
                 }
               ],
               "improvements": [
                 {
                   "id": "sec-imp-central-id-capella",
                   "title": "Use organization single sign-on",
-                  "description": "Configure the Capella organization identity provider and remove shared local administrator accounts."
+                  "description": "Consider configuring single sign-on for the Capella organization through your identity provider, so onboarding and offboarding follow the company process. For any remaining non-SSO users, Capella offers multi-factor authentication, and Organization Owners can see each user's MFA status."
                 }
               ]
             },
@@ -822,15 +971,15 @@
               "risks": [
                 {
                   "id": "sec-risk-central-id-server",
-                  "severity": "high",
-                  "reason": "Local cluster users are easy to leave enabled after a person leaves. LDAP or SAML ties access to the company directory."
+                  "severity": "medium",
+                  "reason": "Local cluster administrator accounts are easy to leave enabled after a person leaves. Linking administrators to LDAP or SAML ties access to the company directory."
                 }
               ],
               "improvements": [
                 {
                   "id": "sec-imp-central-id-server",
                   "title": "Use LDAP or SAML for administrators",
-                  "description": "Configure LDAP or SAML for people. PAM is only for a local operating-system account and is not a directory. Application users stay as database users with their own roles."
+                  "description": "Consider configuring LDAP or SAML authentication for people who administer the cluster, and keeping local accounts for applications only. PAM authenticates against local operating-system accounts and is not a directory."
                 }
               ]
             },
@@ -841,20 +990,20 @@
           },
           {
             "id": "sec1-rbac",
-            "label": "Grant each user only the scopes and collections it needs",
+            "label": "Grant each user only the scopes and collections it needs, never a cluster-wide admin role",
             "ifNotSelected": {
               "risks": [
                 {
                   "id": "sec-risk-rbac",
                   "severity": "high",
-                  "reason": "A user with cluster or bucket administration can read and change data it does not need."
+                  "reason": "A user with Full Admin, Cluster Admin, or bucket-wide Application Access can read and change data it has no need for. If that credential leaks, the whole cluster is exposed."
                 }
               ],
               "improvements": [
                 {
                   "id": "sec-imp-rbac",
                   "title": "Limit each user to its data",
-                  "description": "Create roles on the scopes and collections the user needs. Do not grant Application Access or Cluster Admin to an application."
+                  "description": "Consider creating roles scoped to the scopes and collections each user actually uses, for example Data Reader and Data Writer on a specific collection. Couchbase RBAC supports this on Server 7.0 and later and on Capella."
                 }
               ]
             }
@@ -866,18 +1015,41 @@
               "risks": [
                 {
                   "id": "sec-risk-credentials",
-                  "severity": "high",
-                  "reason": "A password that never changes stays valid after a person leaves or a config file is copied."
+                  "severity": "medium",
+                  "reason": "A database password that never changes stays valid after a person leaves or a configuration file is copied somewhere it should not be."
                 }
               ],
               "improvements": [
                 {
                   "id": "sec-imp-rotation",
                   "title": "Rotate database credentials",
-                  "description": "Store the password in a secrets manager and rotate it. Update the application without putting the new password in source control."
+                  "description": "Consider storing database credentials in a secrets manager and rotating them on a schedule. Creating the new credential before removing the old one lets applications switch without downtime."
                 }
               ]
             }
+          },
+          {
+            "id": "sec1-capella-api-keys",
+            "label": "Give Capella API keys a limited role, an expiry date, and an allowed IP list",
+            "ifNotSelected": {
+              "risks": [
+                {
+                  "id": "sec-risk-capella-api-keys",
+                  "severity": "medium",
+                  "reason": "A Capella Management API key with Organization Owner privileges, no expiry, and no IP restriction is a long-lived credential that can create or delete clusters from anywhere if it leaks."
+                }
+              ],
+              "improvements": [
+                {
+                  "id": "sec-imp-capella-api-keys",
+                  "title": "Scope the Capella API keys",
+                  "description": "Consider creating API keys with only the roles the automation needs, keeping the default expiry (180 days) or shorter, restricting the allowed IP addresses, and rotating keys before they expire."
+                }
+              ]
+            },
+            "appliesTo": [
+              "capella"
+            ]
           }
         ],
         "audience": [
@@ -887,7 +1059,7 @@
       {
         "id": "sec-2",
         "title": "How do you detect and investigate security events in your Couchbase environment?",
-        "description": "Capture and analyze events from logs to gain visibility and take action on potential threats.",
+        "description": "Audit logging is on and the logs leave the node, so a change can be traced to a person and a time.",
         "type": "multi_select",
         "options": [
           {
@@ -897,15 +1069,15 @@
               "risks": [
                 {
                   "id": "sec-risk-audit",
-                  "severity": "high",
-                  "reason": "Without an audit record, a changed password, role, or bucket setting cannot be traced to a person or time."
+                  "severity": "medium",
+                  "reason": "Without an audit record, a changed password, role, or bucket setting cannot be traced to a person or a time."
                 }
               ],
               "improvements": [
                 {
                   "id": "sec-imp-audit",
                   "title": "Enable audit logging",
-                  "description": "Enable Couchbase auditing for authentication and administrative events, and keep the events long enough for an investigation."
+                  "description": "Consider enabling Couchbase auditing for authentication and administrative events. On Capella, audit logging is enabled in the cluster settings and the logs can be exported; on Server, auditing is configured under Security and writes to an audit log on each node."
                 }
               ]
             }
@@ -917,15 +1089,15 @@
               "risks": [
                 {
                   "id": "sec-risk-logs",
-                  "severity": "medium",
-                  "reason": "Logs that exist only on a node are lost if that node is replaced, and they are hard to search during an incident."
+                  "severity": "low",
+                  "reason": "Logs that exist only on a node are lost when the node is replaced, and are hard to search across nodes during an incident."
                 }
               ],
               "improvements": [
                 {
                   "id": "sec-imp-logs",
                   "title": "Forward logs off the node",
-                  "description": "Ship audit and server logs to the security or operations log system. Capella can export logs; self-managed clusters typically use a log shipper."
+                  "description": "Consider forwarding audit and server logs to your central log platform. On self-managed clusters a log shipper on each node is the usual approach; on Capella, audit logs can be exported from the cluster settings or through the Management API."
                 }
               ]
             }
@@ -938,7 +1110,7 @@
       {
         "id": "sec-3",
         "title": "How do you protect your Couchbase network resources?",
-        "description": "Apply multiple layers of defense to protect from external and internal network-based threats.",
+        "description": "Only known networks reach the data ports and the administration console.",
         "type": "multi_select",
         "options": [
           {
@@ -949,14 +1121,14 @@
                 {
                   "id": "sec-risk-exposure",
                   "severity": "high",
-                  "reason": "A Data Service port or the admin console that is open to the internet can be scanned and attacked."
+                  "reason": "A Data Service port or the administration console reachable from the internet can be scanned and attacked."
                 }
               ],
               "improvements": [
                 {
                   "id": "sec-imp-ip",
                   "title": "Close the cluster to unknown networks",
-                  "description": "On Capella, use the allowed-IP list. On self-managed clusters, use security groups or firewall rules for the application networks and the admin network."
+                  "description": "On Capella, consider keeping the Allowed IP list limited to the application and administrator networks, and avoiding 'allow access from anywhere'. On self-managed clusters, consider security groups or firewall rules so only application networks reach the data ports and only the administration network reaches the console."
                 }
               ]
             }
@@ -968,15 +1140,15 @@
               "risks": [
                 {
                   "id": "sec-risk-network",
-                  "severity": "medium",
-                  "reason": "The public Capella endpoint puts database traffic on the internet path. Private Link or VPC peering keeps it on the private network."
+                  "severity": "low",
+                  "reason": "Traffic to the public Capella endpoint travels over the internet, even when it is encrypted. A private connection keeps it inside the cloud provider's network."
                 }
               ],
               "improvements": [
                 {
                   "id": "sec-imp-private",
                   "title": "Use a private Capella connection",
-                  "description": "Use VPC peering or Private Link for application traffic. Keep the public endpoint closed unless a client truly has no private path."
+                  "description": "Consider VPC peering or a private endpoint (AWS PrivateLink, Azure Private Link, or Google Private Service Connect) for application traffic, and restricting public access on the cluster once every client has a private path."
                 }
               ]
             },
@@ -992,7 +1164,7 @@
       {
         "id": "sec-4",
         "title": "How do you protect Couchbase data in transit and at rest?",
-        "description": "Protect data integrity and confidentiality through end-to-end encryption mechanisms.",
+        "description": "Data is encrypted on the network and on disk, with field-level encryption for the most sensitive fields.",
         "type": "multi_select",
         "options": [
           {
@@ -1003,14 +1175,14 @@
                 {
                   "id": "sec-risk-tls",
                   "severity": "high",
-                  "reason": "A client or replication connection without TLS can expose credentials and documents on the network."
+                  "reason": "A client or replication connection without TLS can expose credentials and documents to anyone on the network path."
                 }
               ],
               "improvements": [
                 {
                   "id": "sec-imp-tls",
                   "title": "Require TLS",
-                  "description": "Require TLS 1.2 or later for clients. On self-managed clusters, also enable node-to-node encryption. Capella encrypts client and inter-node traffic."
+                  "description": "Consider requiring TLS 1.2 or later for clients, and on self-managed clusters enabling node-to-node encryption as well. Capella already encrypts client and inter-node traffic."
                 }
               ]
             }
@@ -1022,15 +1194,15 @@
               "risks": [
                 {
                   "id": "sec-risk-rest",
-                  "severity": "high",
-                  "reason": "An unencrypted disk or backup volume can be read by anyone who copies the files."
+                  "severity": "medium",
+                  "reason": "A disk, volume, or backup that is not encrypted can be read by anyone who obtains a copy of the files."
                 }
               ],
               "improvements": [
                 {
                   "id": "sec-imp-rest",
                   "title": "Encrypt stored data",
-                  "description": "Capella encrypts data at rest. Use a customer-managed key when policy requires you to hold the key. On self-managed clusters, encrypt the disks or volumes."
+                  "description": "Capella encrypts data at rest by default and supports customer-managed keys where policy requires that you hold the key. On self-managed clusters, encrypting the disks or volumes is the usual approach; recent versions of Couchbase Server also offer native encryption at rest."
                 }
               ]
             }
@@ -1043,19 +1215,41 @@
                 {
                   "id": "sec-risk-fle",
                   "severity": "low",
-                  "reason": "Volume encryption does not hide a field from someone who can run a query. Field-level encryption does, for the fields you choose."
+                  "reason": "Volume encryption does not hide a field from someone who can run a query. Field-level encryption in the SDK does, for the fields you choose."
                 }
               ],
               "improvements": [
                 {
                   "id": "sec-imp-fle",
                   "title": "Encrypt the fields that must stay hidden",
-                  "description": "Use the SDK field-level encryption library for those fields. Queries cannot filter on an encrypted field unless you design for that."
+                  "description": "For fields such as national identifiers or secrets, consider the SDK field-level encryption library. Encrypted fields cannot be filtered on in SQL++, so it is best to decide which fields need it during data design."
                 }
               ]
             },
             "optional": true,
             "guidance": "Use this for fields such as national identifiers or secrets. It is not required for every document."
+          },
+          {
+            "id": "sec4-xdcr-tls",
+            "label": "If you use XDCR, secure the replication with full TLS encryption",
+            "ifNotSelected": {
+              "risks": [
+                {
+                  "id": "sec-risk-xdcr-tls",
+                  "severity": "medium",
+                  "reason": "By default, XDCR sends data between clusters without encryption. A half-secure replication protects the password only; a fully secure replication encrypts both authentication and data with TLS."
+                }
+              ],
+              "improvements": [
+                {
+                  "id": "sec-imp-xdcr-tls",
+                  "title": "Use fully secure XDCR replication",
+                  "description": "Consider selecting the Full (TLS encrypt password and data) option on the XDCR remote cluster reference and providing the destination cluster's root certificate. Replications to a Capella cluster use this setting."
+                }
+              ]
+            },
+            "optional": true,
+            "guidance": "Only relevant when the cluster replicates to another cluster with XDCR."
           }
         ],
         "audience": [
@@ -1065,7 +1259,7 @@
       {
         "id": "sec-5",
         "title": "How do you prepare for and respond to security incidents involving Couchbase?",
-        "description": "Preparation is critical to timely investigation and recovery from security incidents.",
+        "description": "Backups are protected, and an emergency administrator path exists for when the identity provider is down.",
         "type": "multi_select",
         "options": [
           {
@@ -1075,15 +1269,15 @@
               "risks": [
                 {
                   "id": "sec-risk-backup",
-                  "severity": "high",
-                  "reason": "A backup that the same account can delete does not help after a mistake or ransomware. An unencrypted backup is a second copy of the data."
+                  "severity": "medium",
+                  "reason": "A backup that the same account can delete offers little protection after a mistake or a ransomware event, and an unencrypted backup is a second, unprotected copy of the data."
                 }
               ],
               "improvements": [
                 {
                   "id": "sec-imp-backup",
                   "title": "Protect the backup copies",
-                  "description": "Encrypt backup files. On self-managed clusters, cbbackupmgr can encrypt them. Keep the files in storage with its own credentials and a retention lock where the platform supports it."
+                  "description": "Consider encrypting backups (cbbackupmgr supports encrypted repositories) and storing them in a location with its own credentials and a retention lock where the platform offers one. Capella backups are encrypted and managed for you."
                 }
               ]
             }
@@ -1096,14 +1290,14 @@
                 {
                   "id": "sec-risk-break-glass",
                   "severity": "medium",
-                  "reason": "If every administrator signs in through an identity provider, an identity-provider outage can lock everyone out of the cluster."
+                  "reason": "When every administrator signs in through an identity provider, an outage of that provider can lock everyone out of the cluster."
                 }
               ],
               "improvements": [
                 {
                   "id": "sec-imp-break-glass",
                   "title": "Test emergency admin access",
-                  "description": "Store a break-glass administrator in a vault, restrict who can use it, and test the sign-in on a schedule."
+                  "description": "Consider keeping one emergency administrator credential in a vault, limiting who can retrieve it, and testing the sign-in on a schedule so it works when needed."
                 }
               ]
             }
@@ -1131,14 +1325,14 @@
                 {
                   "id": "sec-risk-app-user",
                   "severity": "high",
-                  "reason": "A shared or Administrator credential means every service can read and change every bucket."
+                  "reason": "A shared or Administrator credential means every service can read and change every bucket, and a leak in one service exposes all the data."
                 }
               ],
               "improvements": [
                 {
                   "id": "sec-imp-app-user",
                   "title": "Create one database user per service",
-                  "description": "Grant that user only the scopes and collections the service uses."
+                  "description": "Consider one database user per service, with roles limited to the scopes and collections that service actually uses."
                 }
               ]
             }
@@ -1151,14 +1345,14 @@
                 {
                   "id": "sec-risk-secrets",
                   "severity": "high",
-                  "reason": "A password in a config file or in source control is copied into every environment and every log archive."
+                  "reason": "A password kept in a configuration file or in source control ends up in every environment, every backup, and every log archive."
                 }
               ],
               "improvements": [
                 {
                   "id": "sec-imp-secrets",
                   "title": "Fetch the database password at startup",
-                  "description": "Read the credential from the secrets manager when the process starts. Do not commit it."
+                  "description": "Consider loading the database credential from a secrets manager when the process starts, and keeping it out of source control and build artifacts."
                 }
               ]
             }
@@ -1171,14 +1365,14 @@
                 {
                   "id": "sec-risk-tls-verify",
                   "severity": "high",
-                  "reason": "A trust-all or insecure TLS setting copied from a development laptop accepts any certificate in production."
+                  "reason": "A trust-all or insecure TLS setting copied from a development laptop accepts any certificate in production, which lets an attacker on the network path read the traffic."
                 }
               ],
               "improvements": [
                 {
-                  "id": "sec-imp-tls",
+                  "id": "sec-imp-tls-verify",
                   "title": "Require verified TLS",
-                  "description": "Use the couchbases scheme and do not disable certificate verification outside a local sandbox."
+                  "description": "Consider connecting with the couchbases:// scheme and leaving certificate verification enabled. The cluster's CA certificate can be installed in the application's trust store; on Capella it can be downloaded from the cluster's Connect page."
                 }
               ]
             }
@@ -1191,14 +1385,14 @@
                 {
                   "id": "sec-risk-mtls",
                   "severity": "low",
-                  "reason": "A password is a bearer secret. A client certificate ties the connection to a service identity."
+                  "reason": "A password is a secret that anyone who holds it can use. A client certificate ties the connection to a specific service identity."
                 }
               ],
               "improvements": [
                 {
                   "id": "sec-imp-mtls",
                   "title": "Use mutual TLS where it is supported",
-                  "description": "Issue a certificate per service and turn off password authentication for that user when mutual TLS is available."
+                  "description": "Where supported, consider client certificate authentication with one certificate per service. When all clients present certificates, the cluster setting for client certificate authentication can be set to mandatory."
                 }
               ]
             },
@@ -1226,14 +1420,14 @@
                 {
                   "id": "sec-risk-injection",
                   "severity": "high",
-                  "reason": "String concatenation in SQL++ is an injection flaw, and it also prevents the server from reusing a query plan."
+                  "reason": "Building a SQL++ statement by concatenating user input is an injection vulnerability. It also changes the statement text on every call, so the Query Service cannot reuse a prepared plan."
                 }
               ],
               "improvements": [
                 {
                   "id": "sec-imp-params",
                   "title": "Parameterize every SQL++ statement",
-                  "description": "Build the statement with placeholders and pass user input only in the parameter object."
+                  "description": "Consider passing user input only as named or positional parameters in the query options, and keeping the statement text itself constant."
                 }
               ]
             }
@@ -1246,14 +1440,14 @@
                 {
                   "id": "sec-risk-redaction",
                   "severity": "medium",
-                  "reason": "A debug log of a document body becomes a second, unmanaged copy of personal data."
+                  "reason": "A debug log that prints a document body becomes a second, unmanaged copy of personal data."
                 }
               ],
               "improvements": [
                 {
                   "id": "sec-imp-redaction",
                   "title": "Redact SDK and application logs",
-                  "description": "Turn on SDK redaction and keep document contents out of application traces."
+                  "description": "Consider enabling the SDK log redaction setting and keeping document contents out of application traces and logs."
                 }
               ]
             }
@@ -1265,15 +1459,96 @@
               "risks": [
                 {
                   "id": "sec-risk-review",
-                  "severity": "medium",
-                  "reason": "A query that reads an entire collection returns more data than the feature needs and can overload the Query Service."
+                  "severity": "low",
+                  "reason": "A query that reads an entire collection returns more data than the feature needs and can overload the Query Service, especially as the data grows."
                 }
               ],
               "improvements": [
                 {
                   "id": "sec-imp-review",
-                  "title": "Add those checks to code review",
-                  "description": "Reject a change that adds a primary index, a scan of a whole collection, or a SQL++ statement with no LIMIT."
+                  "title": "Add Couchbase checks to code review",
+                  "description": "Consider adding three checks to code review: no primary index in production, no statement whose EXPLAIN plan scans a whole collection, and no SQL++ statement without a LIMIT when it can return many rows."
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "sec-8",
+        "title": "How do you manage TLS certificates?",
+        "description": "Production uses certificates from your own CA, expiry dates are tracked, and a rotation does not surprise the applications.",
+        "type": "multi_select",
+        "audience": [
+          "security",
+          "platform"
+        ],
+        "guidance": "Capella issues and renews the cluster certificate for you. On Capella, only the client trust store item applies.",
+        "options": [
+          {
+            "id": "sec8-ca-signed",
+            "label": "Use certificates issued by your organization's CA in production, not the self-signed default",
+            "ifNotSelected": {
+              "risks": [
+                {
+                  "id": "sec8-ca-signed-risk",
+                  "severity": "medium",
+                  "reason": "Couchbase Server generates a self-signed certificate at installation. In production, clients cannot verify it against a trusted CA, which pushes teams to disable certificate verification in the SDK."
+                }
+              ],
+              "improvements": [
+                {
+                  "id": "sec8-ca-signed-imp",
+                  "title": "Issue node certificates from your organization's CA",
+                  "description": "Consider uploading your organization's root and intermediate CA certificates to the cluster and issuing a certificate for each node from that CA. Applications then verify the connection with a CA they already trust."
+                }
+              ]
+            },
+            "appliesTo": [
+              "self-managed",
+              "operator"
+            ]
+          },
+          {
+            "id": "sec8-expiry",
+            "label": "Track certificate expiry and rotate certificates before they expire",
+            "ifNotSelected": {
+              "risks": [
+                {
+                  "id": "sec8-expiry-risk",
+                  "severity": "high",
+                  "reason": "An expired node certificate breaks client connections and node-to-node encryption at the same time. Couchbase Server raises an alert 30 days before a certificate expires, but only when alerts are enabled and someone receives them."
+                }
+              ],
+              "improvements": [
+                {
+                  "id": "sec8-expiry-imp",
+                  "title": "Plan certificate rotation ahead of expiry",
+                  "description": "Consider recording the expiry dates of the root, intermediate, and node certificates, keeping the certificate-expiry alert enabled, and planning the rotation well before the date. Rotation on the server side does not require a restart; the client trust stores need the new CA as well."
+                }
+              ]
+            },
+            "appliesTo": [
+              "self-managed",
+              "operator"
+            ]
+          },
+          {
+            "id": "sec8-client-trust",
+            "label": "Distribute the cluster CA certificate to applications through a managed trust store",
+            "ifNotSelected": {
+              "risks": [
+                {
+                  "id": "sec8-client-trust-risk",
+                  "severity": "low",
+                  "reason": "When each application copies the CA certificate by hand, a CA rotation becomes a coordinated change across every service, and a service that is missed fails at its next connection."
+                }
+              ],
+              "improvements": [
+                {
+                  "id": "sec8-client-trust-imp",
+                  "title": "Manage the CA certificate centrally",
+                  "description": "Consider distributing the CA certificate through the platform's trust store or secrets manager, so a rotation is a single change. On Capella, the certificate is available from the cluster's Connect page and through the Management API."
                 }
               ]
             }
@@ -1285,7 +1560,7 @@
   {
     "id": "reliability",
     "name": "Reliability (REL)",
-    "description": "Design for resilient node, availability zone, and regional failure recovery scenarios, ensuring workloads perform their intended functions correctly and consistently.",
+    "description": "Survive the loss of a node, a rack, a zone, or a datacenter, and make sure applications recover together with the cluster.",
     "questions": [
       {
         "id": "rel-1",
@@ -1301,14 +1576,14 @@
                 {
                   "id": "rel-risk-loss",
                   "severity": "high",
-                  "reason": "A bucket with no replicas is unavailable for the documents on a node as soon as that node is lost."
+                  "reason": "A bucket with no replicas loses access to the documents on a node as soon as that node is lost, and auto-failover will not fail that node over, because doing so would lose data."
                 }
               ],
               "improvements": [
                 {
                   "id": "rel-improvement-replica",
                   "title": "Set replicas on production buckets",
-                  "description": "Use at least one replica for production data. Use more only when the cluster has enough nodes to place them in different failure domains."
+                  "description": "We recommend at least one replica on every production bucket. Two replicas add protection when the cluster has enough nodes to place them in separate failure domains. Durable writes are not supported on buckets with three replicas."
                 }
               ]
             }
@@ -1321,14 +1596,14 @@
                 {
                   "id": "rel-risk-az",
                   "severity": "high",
-                  "reason": "If the active document and its replica sit in the same rack or zone, one failure removes both copies."
+                  "reason": "When the active document and its replica sit in the same rack or availability zone, a single failure removes both copies."
                 }
               ],
               "improvements": [
                 {
                   "id": "rel-improvement-az",
                   "title": "Separate copies across failure domains",
-                  "description": "On self-managed Server, define Server Groups and place one group in each zone or rack. Capella spreads nodes across zones when the cluster is deployed that way."
+                  "description": "On self-managed Server, consider defining Server Groups, one per rack or zone, so replicas are placed in a different group from the active copy. Capella spreads nodes across zones when the cluster is deployed in a multi-zone configuration."
                 }
               ]
             }
@@ -1341,14 +1616,14 @@
                 {
                   "id": "rel1-min-nodes-risk",
                   "severity": "high",
-                  "reason": "Auto-failover stays off with one or two nodes, because the cluster cannot break a tie safely."
+                  "reason": "Couchbase Server only performs auto-failover in clusters of three or more nodes, because with fewer nodes it cannot tell a failed node from a network split."
                 }
               ],
               "improvements": [
                 {
                   "id": "rel1-min-nodes-imp",
                   "title": "Use three or more nodes in production",
-                  "description": "Keep a one-node or two-node cluster for development only. Add an arbiter only when you still need a vote and cannot add a full data node."
+                  "description": "We recommend three or more nodes for production. One- and two-node clusters are suitable for development. If a third data node is not possible, an arbiter node can provide the extra vote."
                 }
               ]
             }
@@ -1361,14 +1636,14 @@
                 {
                   "id": "rel1-equal-groups-risk",
                   "severity": "medium",
-                  "reason": "A smaller group holds more replica data, so it runs hotter and fails over less evenly."
+                  "reason": "When server groups have different sizes, the smaller group holds a larger share of replica data, runs hotter, and takes more load after a failover."
                 }
               ],
               "improvements": [
                 {
                   "id": "rel1-equal-groups-imp",
                   "title": "Balance the server groups",
-                  "description": "Put the same number of Data nodes in each rack or zone. Capella places nodes for you when the cluster is deployed across zones."
+                  "description": "Consider placing the same number of Data Service nodes in each server group. Capella places nodes evenly across zones for you."
                 }
               ]
             },
@@ -1385,14 +1660,14 @@
                 {
                   "id": "rel1-arbiter-risk",
                   "severity": "medium",
-                  "reason": "Two equal groups can lose quorum when one group disappears. Auto-failover then does not run."
+                  "reason": "With two equal server groups, losing one group leaves exactly half the nodes, which is not a majority, so auto-failover does not run."
                 }
               ],
               "improvements": [
                 {
                   "id": "rel1-arbiter-imp",
                   "title": "Add an arbiter in a third group",
-                  "description": "An arbiter runs only the Cluster Manager. Start from the smallest node you already use, watch CPU and RAM during rebalance, and keep it in its own rack, host, or zone."
+                  "description": "Consider a third server group containing an arbiter node, which runs only the Cluster Manager and holds no data. It can be a small instance placed in its own rack, host, or zone."
                 }
               ]
             },
@@ -1410,15 +1685,15 @@
               "risks": [
                 {
                   "id": "rel-risk-timeout",
-                  "severity": "high",
-                  "reason": "A timeout that is too short fails a healthy node over during a blip. A timeout that is too long leaves clients waiting."
+                  "severity": "medium",
+                  "reason": "Auto-failover triggers after a node has been unresponsive for the configured timeout; the default is 120 seconds. A value that is too short can fail over a healthy node during a brief network blip, and a value that is too long leaves clients waiting."
                 }
               ],
               "improvements": [
                 {
                   "id": "rel-improvement-failover",
-                  "title": "Set the auto-failover timeout",
-                  "description": "Choose the timeout with the application timeouts in mind, and record why that value was picked."
+                  "title": "Set the auto-failover timeout deliberately",
+                  "description": "Consider choosing the timeout with the application timeouts in mind and recording why the value was chosen. Values of only a few seconds increase the risk of unnecessary failovers."
                 }
               ]
             }
@@ -1430,15 +1705,15 @@
               "risks": [
                 {
                   "id": "rel-risk-durability-impossible",
-                  "severity": "high",
-                  "reason": "A durability level the topology cannot meet returns DurabilityImpossible as soon as one node is unavailable."
+                  "severity": "medium",
+                  "reason": "A durability level the topology cannot satisfy returns a DurabilityImpossible error. For example, majority needs at least two Data Service nodes with one replica, and durable writes are not supported on buckets with three replicas."
                 }
               ],
               "improvements": [
                 {
                   "id": "rel-imp-durability-fit",
                   "title": "Match durability to the topology",
-                  "description": "Check each write's durability level against the bucket replica count and the number of nodes that must acknowledge it."
+                  "description": "Consider checking each write's durability level against the bucket's replica count and the number of Data Service nodes, including the situation where one node is down."
                 }
               ]
             },
@@ -1454,17 +1729,40 @@
                 {
                   "id": "rel-risk-limits",
                   "severity": "medium",
-                  "reason": "The server rejects a document larger than 20 MB and a key longer than 250 bytes. Finding that in production means the write path was not checked."
+                  "reason": "Couchbase Server rejects a document value larger than 20 MB and a key longer than 250 bytes (246 bytes in collections other than the default collection). Discovering this in production means the write path was not validated."
                 }
               ],
               "improvements": [
                 {
                   "id": "rel-imp-limits",
                   "title": "Enforce the document and key limits",
-                  "description": "Reject oversized documents and keys in the application. Plan how many collections you need before the data model is fixed."
+                  "description": "Consider validating document size and key length in the application, and designing documents so they stay well below the limit. Arrays that grow without bound are the usual cause of oversized documents."
                 }
               ]
             }
+          },
+          {
+            "id": "rel1-index-replicas",
+            "label": "Create indexes with replicas so queries keep working when an Index node is lost",
+            "ifNotSelected": {
+              "risks": [
+                {
+                  "id": "rel-risk-index-replicas",
+                  "severity": "high",
+                  "reason": "An index with no replica becomes unavailable as soon as the Index Service node that holds it fails, and every query that depends on it returns errors until the node is recovered. Index replication is available in Enterprise Edition and on Capella."
+                }
+              ],
+              "improvements": [
+                {
+                  "id": "rel-imp-index-replicas",
+                  "title": "Add replicas to production indexes",
+                  "description": "Consider creating indexes with num_replica set to 1 (or setting a default number of index replicas) so a copy exists on another Index node. The Query Service switches to the replica automatically. The number of replicas must be smaller than the number of Index Service nodes."
+                }
+              ]
+            },
+            "alsoRelevantTo": [
+              "Performance Efficiency"
+            ]
           }
         ],
         "audience": [
@@ -1485,15 +1783,15 @@
               "risks": [
                 {
                   "id": "rel-risk-retry",
-                  "severity": "high",
-                  "reason": "An extra application retry loop on top of the SDK default causes retry storms. Retrying a write when the outcome is unknown can duplicate data."
+                  "severity": "medium",
+                  "reason": "The SDK already retries retryable failures until the operation times out (the BestEffortRetryStrategy). An extra application retry loop on top multiplies the load on a cluster that is already struggling, and retrying a write whose outcome is unknown can duplicate data."
                 }
               ],
               "improvements": [
                 {
                   "id": "rel-improvement-retry",
-                  "title": "Bound retries to the SDK and known outcomes",
-                  "description": "Keep the SDK retry strategy. Do not wrap it in another loop. Retry a non-idempotent mutation only after an unambiguous failure."
+                  "title": "Rely on the SDK retry strategy",
+                  "description": "Consider relying on the SDK retry strategy and the operation timeout rather than wrapping each call in another loop. A write that is not idempotent is best retried only after an error that clearly says it did not happen."
                 }
               ]
             },
@@ -1511,14 +1809,14 @@
                 {
                   "id": "rel-risk-read",
                   "severity": "low",
-                  "reason": "During failover, a read of the active copy waits until failover finishes. A replica read can return the last replicated document sooner."
+                  "reason": "During a failover, a read of the active copy waits until the failover completes. A replica read can return the last replicated version sooner, which may be slightly older."
                 }
               ],
               "improvements": [
                 {
                   "id": "rel-improvement-read",
                   "title": "Add a replica read for that path",
-                  "description": "Use getAnyReplica or getAllReplicas only for reads that can accept replica data. Do not use it for a read that must see the latest write."
+                  "description": "For reads that can accept slightly stale data, consider getAnyReplica or getAllReplicas as a fallback. Reads that must see the latest write should keep using the active copy."
                 }
               ]
             },
@@ -1533,14 +1831,14 @@
                 {
                   "id": "rel-risk-idempotency",
                   "severity": "high",
-                  "reason": "Retrying a write whose result was lost can create a second document or apply the same business action twice."
+                  "reason": "Retrying a write whose result was lost, for example after a timeout, can create a second document or apply the same business action twice."
                 }
               ],
               "improvements": [
                 {
                   "id": "rel-improvement-idempotent",
                   "title": "Decide which writes are safe to retry",
-                  "description": "Use a stable document key. Retry a write only when the error says the write did not happen, or when repeating it does not change the outcome."
+                  "description": "Consider using a stable document key so a repeated insert is detected, and retrying a write only when the error states the write did not happen or when repeating it does not change the outcome."
                 }
               ]
             },
@@ -1567,14 +1865,14 @@
                 {
                   "id": "rel-risk-dr-replication",
                   "severity": "medium",
-                  "reason": "Backups restore to a point in time. They do not keep a second site current. If the business needs that, XDCR is the Couchbase mechanism, and its conflict mode is fixed at bucket creation."
+                  "reason": "Backups restore data to a point in time; they do not keep a second site current. If the business needs a live second site, XDCR is the Couchbase mechanism for it. The conflict-resolution mode is chosen when the bucket is created and cannot be changed afterwards."
                 }
               ],
               "improvements": [
                 {
                   "id": "rel-improvement-xdcr",
                   "title": "Add a second site only when the target requires it",
-                  "description": "Configure XDCR to the recovery cluster and write down the conflict mode. If one site is enough, record that in the notes instead of adding a cluster."
+                  "description": "If a second site is required, consider configuring XDCR to the recovery cluster and recording the conflict-resolution mode in the design. If one site is sufficient, recording that decision in the notes is a valid answer."
                 }
               ]
             }
@@ -1587,14 +1885,14 @@
                 {
                   "id": "rel-risk-rpo-rto",
                   "severity": "medium",
-                  "reason": "Without a recovery point and a recovery time, nobody can tell whether backups or XDCR are enough."
+                  "reason": "Without a recovery point objective and a recovery time objective, nobody can judge whether the backup schedule or the replication lag is sufficient."
                 }
               ],
               "improvements": [
                 {
                   "id": "rel-improvement-rpo-rto",
                   "title": "Write the recovery targets",
-                  "description": "Record how much data you can lose and how long you can be down. Compare the backup interval and the replication lag with those numbers."
+                  "description": "Consider writing down how much data can be lost and how long the service can be down, then comparing the backup interval, backup retention, and XDCR lag with those numbers."
                 }
               ]
             }
@@ -1606,15 +1904,15 @@
               "risks": [
                 {
                   "id": "rel-risk-dr-test",
-                  "severity": "high",
-                  "reason": "A recovery design that has never been run often fails on DNS, connection strings, or application configuration."
+                  "severity": "medium",
+                  "reason": "A recovery design that has never been exercised often fails on details such as DNS, connection strings, or application configuration."
                 }
               ],
               "improvements": [
                 {
                   "id": "rel-improvement-dr-test",
                   "title": "Practice the site switch",
-                  "description": "On a schedule, point a test application at the recovery cluster and confirm the data and the access path."
+                  "description": "Consider practicing the switch on a schedule: point a test application at the recovery cluster and confirm the data, the credentials, and the network path."
                 }
               ]
             },
@@ -1630,7 +1928,7 @@
       {
         "id": "rel-4",
         "title": "How do you back up data and ensure its recoverability?",
-        "description": "Establish persistent data protection mechanisms and validate restoration workflows to recover from catastrophic loss.",
+        "description": "Backups run on a schedule, and a restore has been tested.",
         "type": "multi_select",
         "options": [
           {
@@ -1641,14 +1939,14 @@
                 {
                   "id": "rel-risk-nobackup",
                   "severity": "high",
-                  "reason": "A backup that has never been restored is an unverified copy. Accidental deletion and disk loss both need that copy."
+                  "reason": "A backup that has never been restored is an unverified copy. Accidental deletion, a bad deployment, and disk loss all need a copy that is known to work."
                 }
               ],
               "improvements": [
                 {
                   "id": "rel-improvement-backup",
-                  "title": "Schedule backups and restore one",
-                  "description": "On Capella, use the Capella backup schedule. On self-managed clusters, use the Backup Service or cbbackupmgr. Restore into a non-production bucket and check the data."
+                  "title": "Schedule backups and test a restore",
+                  "description": "On Capella, consider a backup schedule that matches the recovery objectives (by default, cluster backups run every 4 hours and are kept for 7 days). On self-managed clusters, the Backup Service or cbbackupmgr are the supported tools. Restoring into a non-production bucket on a schedule confirms the backup works."
                 }
               ]
             }
@@ -1661,14 +1959,14 @@
                 {
                   "id": "rel-risk-ephemeral",
                   "severity": "high",
-                  "reason": "An emptyDir or other ephemeral disk is wiped when the pod is replaced, so the node has to rebuild from replicas or from backup."
+                  "reason": "An emptyDir or other ephemeral volume is removed when the pod is replaced. The node then has to be rebuilt from replicas or from backup, which takes time and adds load."
                 }
               ],
               "improvements": [
                 {
                   "id": "rel-improvement-volumes",
                   "title": "Use persistent volumes",
-                  "description": "In the Autonomous Operator, set persistent volumes for the services that store data. Capella manages disks for you."
+                  "description": "In the Autonomous Operator cluster definition, consider persistent volume claims for the Data, Index, Analytics, and Search services. Capella manages storage for you."
                 }
               ]
             },
@@ -1683,9 +1981,95 @@
         ]
       },
       {
+        "id": "rel-5",
+        "title": "How do you manage disk space and compaction?",
+        "description": "The data disk never fills, compaction runs when it should, and there is room for a rebalance.",
+        "type": "multi_select",
+        "audience": [
+          "platform"
+        ],
+        "guidance": "Capella monitors and manages cluster storage for you. Answer this for self-managed Server and for the Autonomous Operator.",
+        "options": [
+          {
+            "id": "rel5-disk-alert",
+            "label": "Alert on data disk usage before the disk fills",
+            "ifNotSelected": {
+              "risks": [
+                {
+                  "id": "rel5-disk-alert-risk",
+                  "severity": "high",
+                  "reason": "When the data disk fills, the Data Service can no longer persist writes and the node becomes unhealthy. Couchbase Server includes disk-usage alerts for the data path, but they only help when alerts are enabled and routed to a person."
+                }
+              ],
+              "improvements": [
+                {
+                  "id": "rel5-disk-alert-imp",
+                  "title": "Alert on disk usage",
+                  "description": "Consider keeping the Couchbase disk-usage alert enabled and forwarded to on-call, and adding a platform-level alert on free space for the data and index paths."
+                }
+              ]
+            },
+            "appliesTo": [
+              "self-managed",
+              "operator"
+            ]
+          },
+          {
+            "id": "rel5-compaction",
+            "label": "Keep auto-compaction enabled, scheduled outside peak hours when needed",
+            "ifNotSelected": {
+              "risks": [
+                {
+                  "id": "rel5-compaction-risk",
+                  "severity": "medium",
+                  "reason": "Couchstore data files grow with every update until compaction reclaims the space. Auto-compaction is on by default, with a 30% fragmentation threshold. Turning it off, or letting it run at peak on a busy disk, leads to a full disk or slow I/O during business hours."
+                }
+              ],
+              "improvements": [
+                {
+                  "id": "rel5-compaction-imp",
+                  "title": "Review the auto-compaction settings",
+                  "description": "Consider leaving auto-compaction enabled and, when the disk is shared with heavy traffic, giving it a time window outside peak hours. Magma buckets manage fragmentation differently and need far less tuning."
+                }
+              ]
+            },
+            "appliesTo": [
+              "self-managed",
+              "operator"
+            ],
+            "optional": true,
+            "guidance": "Mainly for Couchstore buckets. Leave unchecked when every bucket uses Magma."
+          },
+          {
+            "id": "rel5-headroom",
+            "label": "Keep disk headroom for compaction, rebalance, and failover",
+            "ifNotSelected": {
+              "risks": [
+                {
+                  "id": "rel5-headroom-risk",
+                  "severity": "medium",
+                  "reason": "Compaction writes a new file next to the old one, and a failover or rebalance brings more data onto the surviving nodes. A disk that is already near full cannot absorb either."
+                }
+              ],
+              "improvements": [
+                {
+                  "id": "rel5-headroom-imp",
+                  "title": "Size the disk with free space in mind",
+                  "description": "Consider sizing the data disk with the free space the Couchbase sizing guidelines recommend for compaction, and with room for one node's data to arrive after a failover. It helps to review this as the data grows."
+                }
+              ]
+            },
+            "appliesTo": [
+              "self-managed",
+              "operator"
+            ]
+          }
+        ]
+      },
+      {
         "id": "rel-6",
         "title": "How do you manage cluster capacity to prevent resource-induced outages?",
-        "description": "Ensure the cluster has sufficient memory, CPU, and disk headroom to handle peak loads and automated failover events.",
+        "description": "The cluster has enough memory, CPU, and disk to keep serving after one node is lost.",
         "type": "multi_select",
         "options": [
           {
@@ -1696,14 +2080,14 @@
                 {
                   "id": "rel-risk-buffer",
                   "severity": "high",
-                  "reason": "If the remaining nodes cannot hold the replica data and the traffic, failover of one node overloads the rest."
+                  "reason": "When the remaining nodes cannot hold the replica data and the traffic of a lost node, the failover of one node overloads the rest and can lead to a second failure."
                 }
               ],
               "improvements": [
                 {
                   "id": "rel-improvement-buffer",
                   "title": "Size for one node down",
-                  "description": "Leave headroom so the surviving nodes can take the data and the traffic of one failed node."
+                  "description": "Consider sizing so the cluster can lose one node and still stay within memory, CPU, and disk limits. The Couchbase sizing guidelines describe how to account for replicas and the working set."
                 }
               ]
             }
@@ -1727,14 +2111,14 @@
                 {
                   "id": "rel-risk-untested",
                   "severity": "medium",
-                  "reason": "A failover setting that has never been used can fail on server groups, disk, or networking the first time a node is really lost."
+                  "reason": "A failover setting that has never been exercised can fail the first time a node is really lost, because of server group, disk, or network details nobody had seen."
                 }
               ],
               "improvements": [
                 {
                   "id": "rel-improvement-chaos",
                   "title": "Practice a node failure",
-                  "description": "In a non-production cluster, stop one node and confirm failover, rebalance, and application errors behave as expected."
+                  "description": "Consider stopping one node in a non-production cluster on a schedule and confirming that auto-failover, rebalance, and application behavior match expectations."
                 }
               ]
             },
@@ -1749,15 +2133,15 @@
               "risks": [
                 {
                   "id": "rel-risk-app-untested",
-                  "severity": "high",
-                  "reason": "A cluster drill that no application is running does not show whether clients time out, retry, or duplicate writes."
+                  "severity": "medium",
+                  "reason": "A cluster drill run without an application does not show whether clients time out, retry correctly, or duplicate writes."
                 }
               ],
               "improvements": [
                 {
                   "id": "rel-imp-app-load",
                   "title": "Fail the cluster while the application is serving traffic",
-                  "description": "During a failover or rebalance test, watch client errors, ambiguous timeouts, and whether retries stay bounded."
+                  "description": "During a failover or rebalance test, consider watching client errors, ambiguous timeouts, and retry counts from the application side, not only from the cluster side."
                 }
               ]
             }
@@ -1785,14 +2169,14 @@
                 {
                   "id": "rel-risk-per-request",
                   "severity": "high",
-                  "reason": "Opening a Cluster connection per request exhausts connections and adds bootstrap latency to every call."
+                  "reason": "Opening a new Cluster connection per request is expensive: each one bootstraps, opens sockets, and loads the cluster map. Under load it exhausts connections and adds latency to every call."
                 }
               ],
               "improvements": [
                 {
                   "id": "rel-imp-singleton",
                   "title": "Share one Cluster connection",
-                  "description": "Create the Cluster object at startup and inject it. Do not construct it inside a request handler."
+                  "description": "Consider creating the Cluster object once at application startup and sharing it across requests. The SDK is designed to be used this way and is safe to share between threads."
                 }
               ]
             }
@@ -1805,14 +2189,14 @@
                 {
                   "id": "rel-risk-ready",
                   "severity": "medium",
-                  "reason": "A process that starts before it can reach Couchbase fails the first real user request instead of failing deployment."
+                  "reason": "A process that starts before it can reach Couchbase fails on the first real user request instead of failing the deployment, which is harder to detect."
                 }
               ],
               "improvements": [
                 {
                   "id": "rel-imp-ready",
                   "title": "Wait until the SDK is ready",
-                  "description": "Block startup on waitUntilReady and fail the deployment if it times out."
+                  "description": "Consider calling waitUntilReady during startup and failing the deployment if the cluster is not reachable within a reasonable time."
                 }
               ]
             }
@@ -1825,14 +2209,14 @@
                 {
                   "id": "rel-risk-seed",
                   "severity": "medium",
-                  "reason": "A single seed node is a single point of failure for every new process that needs to join the cluster."
+                  "reason": "A single seed hostname in the connection string is a single point of failure for every new process that needs to join the cluster."
                 }
               ],
               "improvements": [
                 {
                   "id": "rel-imp-seeds",
                   "title": "Configure multiple bootstrap targets",
-                  "description": "Use a DNS SRV record or list several seed addresses in the connection string."
+                  "description": "Consider a DNS SRV record, or a connection string with several node addresses. Capella connection strings already use DNS SRV."
                 }
               ]
             }
@@ -1845,14 +2229,14 @@
                 {
                   "id": "rel-risk-lambda",
                   "severity": "high",
-                  "reason": "A function that connects on every invocation spends the request on bootstrap and can exhaust cluster connections."
+                  "reason": "A function that connects to Couchbase on every invocation spends much of the request on bootstrap and can exhaust cluster connections at scale."
                 }
               ],
               "improvements": [
                 {
                   "id": "rel-imp-serverless",
                   "title": "Reuse the connection across invocations",
-                  "description": "Initialize the Cluster object outside the handler so the next invocation reuses it. On Capella, a very short function can call the Data API instead of holding a SDK connection."
+                  "description": "Consider initializing the Cluster object outside the handler so warm invocations reuse it. On Capella, very short functions can also use the Data API, a REST interface that needs no SDK connection."
                 }
               ]
             },
@@ -1866,14 +2250,14 @@
                 {
                   "id": "rel-risk-close",
                   "severity": "low",
-                  "reason": "A process that exits without closing leaves connections and sockets until the server times them out."
+                  "reason": "A process that exits without closing the SDK connection leaves sockets open until the server times them out."
                 }
               ],
               "improvements": [
                 {
                   "id": "rel-imp-close",
                   "title": "Disconnect on shutdown",
-                  "description": "Call disconnect or close from the process shutdown hook."
+                  "description": "Consider calling disconnect or close from the application's shutdown hook."
                 }
               ]
             }
@@ -1901,15 +2285,15 @@
               "risks": [
                 {
                   "id": "rel-risk-timeouts",
-                  "severity": "high",
-                  "reason": "The SDK defaults, including a multi-second Key-Value timeout and a much longer query timeout, rarely match the business deadline."
+                  "severity": "medium",
+                  "reason": "The SDK defaults are 2.5 seconds for Key-Value operations and 75 seconds for SQL++ queries. These rarely match the deadline of the API that calls Couchbase, so a request can keep waiting long after the user has given up."
                 }
               ],
               "improvements": [
                 {
                   "id": "rel-imp-budgets",
                   "title": "Set explicit timeout budgets",
-                  "description": "Configure Key-Value, durable write, query, search, and transaction timeouts from the caller's latency budget."
+                  "description": "Consider setting Key-Value, durable-write, query, search, and transaction timeouts from the caller's latency budget, either in the cluster environment or per operation."
                 }
               ]
             }
@@ -1922,14 +2306,14 @@
                 {
                   "id": "rel-risk-ambiguous",
                   "severity": "high",
-                  "reason": "Retrying after AmbiguousTimeout or DurabilityAmbiguous can apply a payment, an order, or a stock change twice."
+                  "reason": "An AmbiguousTimeout or DurabilityAmbiguous error means the operation may have succeeded. Retrying it blindly can apply a payment, an order, or a stock change twice."
                 }
               ],
               "improvements": [
                 {
                   "id": "rel-imp-ambiguous",
-                  "title": "Branch on ambiguous and unambiguous errors",
-                  "description": "On an ambiguous result, reconcile before retrying. Retry immediately only when the SDK reports that the operation did not happen."
+                  "title": "Handle ambiguous errors separately",
+                  "description": "Consider handling ambiguous errors on their own path: read the document back or reconcile before retrying. Errors that clearly state the operation did not happen can be retried right away."
                 }
               ]
             }
@@ -1941,15 +2325,15 @@
               "risks": [
                 {
                   "id": "rel-risk-storm",
-                  "severity": "high",
-                  "reason": "Immediate retries from both the SDK and the application multiply load while the cluster is already unhealthy."
+                  "severity": "medium",
+                  "reason": "Immediate retries from both the SDK and the application multiply the load on a cluster that is already unhealthy."
                 }
               ],
               "improvements": [
                 {
                   "id": "rel-imp-backoff",
                   "title": "Cap and jitter any extra retry",
-                  "description": "Prefer the SDK retry strategy. An application retry needs a maximum delay, jitter, and a stop condition."
+                  "description": "The SDK retry strategy already uses exponential backoff. If the application adds its own retry, consider a maximum delay, jitter, and a stop condition."
                 }
               ]
             }
@@ -1962,14 +2346,14 @@
                 {
                   "id": "rel-risk-fanout",
                   "severity": "medium",
-                  "reason": "Unbounded concurrency during recovery sends more work to a cluster that is already catching up."
+                  "reason": "Unbounded concurrency during a recovery sends more work to a cluster that is still catching up, which delays the recovery."
                 }
               ],
               "improvements": [
                 {
                   "id": "rel-imp-backpressure",
                   "title": "Limit in-flight SDK calls",
-                  "description": "Set a concurrency limit on async and reactive pipelines and shed or queue work past that limit."
+                  "description": "Consider a concurrency limit on asynchronous and reactive pipelines, and queueing or shedding work beyond that limit."
                 }
               ]
             }
@@ -1981,15 +2365,15 @@
               "risks": [
                 {
                   "id": "rel-risk-degrade",
-                  "severity": "medium",
-                  "reason": "A primary timeout becomes a user-facing error even when a replica or a cache could answer."
+                  "severity": "low",
+                  "reason": "A timeout on the active copy becomes a user-facing error even when a replica or a cache could have answered."
                 }
               ],
               "improvements": [
                 {
                   "id": "rel-imp-degrade",
                   "title": "Define the fallback read",
-                  "description": "For read paths that allow it, fall back to a replica read or a cached value and tell the caller the data may be stale."
+                  "description": "For read paths that allow it, consider falling back to a replica read or a cached value, and signalling to the caller that the data may be slightly stale."
                 }
               ]
             }
@@ -2006,7 +2390,7 @@
   {
     "id": "performance-efficiency",
     "name": "Performance Efficiency (PERF)",
-    "description": "Optimize SQL++ execution, access models, and cluster sizing for predictable low-latency responses. Sub-millisecond latency applies to Key-Value access, not to SQL++.",
+    "description": "Keep Key-Value and SQL++ access fast through the right access path, indexes, and sizing. Sub-millisecond latency applies to Key-Value access, not to SQL++.",
     "questions": [
       {
         "id": "perf-1",
@@ -2021,15 +2405,15 @@
               "risks": [
                 {
                   "id": "perf-risk-scan",
-                  "severity": "high",
-                  "reason": "A query that must fetch the document from the Data Service after the index lookup moves much more data and takes longer."
+                  "severity": "medium",
+                  "reason": "When an index contains only the filter fields, the Query Service must fetch each matching document from the Data Service after the index scan. A covering index returns the result from the index alone and avoids that extra step."
                 }
               ],
               "improvements": [
                 {
                   "id": "perf-improvement-covered",
                   "title": "Cover the frequent queries",
-                  "description": "Put the filter fields and the returned fields in the index when the query runs often. Confirm with EXPLAIN that the plan does not fetch the document."
+                  "description": "For frequent queries, consider including the returned fields in the index as well as the filter fields, and confirming with EXPLAIN that the plan no longer contains a Fetch step."
                 }
               ]
             },
@@ -2044,15 +2428,15 @@
               "risks": [
                 {
                   "id": "perf-risk-cpu",
-                  "severity": "high",
-                  "reason": "LOWER(name) = 'a' or a similar function on an indexed field stops the planner from using a bounded index scan. The query can fall back to a wider scan. That is not always a primary-index scan."
+                  "severity": "medium",
+                  "reason": "Applying a function to an indexed field in the WHERE clause, such as LOWER(name) = 'a', prevents the planner from using a bounded index scan on that field. The query then reads a much wider range or falls back to another index."
                 }
               ],
               "improvements": [
                 {
                   "id": "perf-improvement-sargable",
                   "title": "Keep predicates usable by the index",
-                  "description": "Store the value in the form you search for, such as a lowercase field, instead of wrapping the indexed field in LOWER() or another function."
+                  "description": "Consider storing the value in the form you search for, for example a lowercase copy of the field, or creating an index on the same expression that is used in the WHERE clause."
                 }
               ]
             }
@@ -2065,14 +2449,14 @@
                 {
                   "id": "perf-risk-fts",
                   "severity": "low",
-                  "reason": "A secondary index is a poor fit for ad-hoc text search across many fields. Search is built for that access pattern."
+                  "reason": "Secondary indexes are a poor fit for ad-hoc text search across many fields. The Search Service is built for that access pattern."
                 }
               ],
               "improvements": [
                 {
                   "id": "perf-improvement-fts",
                   "title": "Use Search for text queries",
-                  "description": "Create a Search index for the text fields. Flex Indexes let SQL++ use that Search index when the query qualifies."
+                  "description": "Consider a Search index for the text fields. With a Flex Index, SQL++ can use the Search index transparently when the query qualifies."
                 }
               ]
             },
@@ -2081,26 +2465,48 @@
           },
           {
             "id": "perf1-prepared",
-            "label": "Use prepared statements for SQL++ that runs often with different values",
+            "label": "Use prepared statements (adhoc false) for SQL++ that runs often with different values",
             "ifNotSelected": {
               "risks": [
                 {
                   "id": "perf-risk-prepared",
-                  "severity": "medium",
-                  "reason": "Sending a new statement text for the same query shape makes the Query Service parse and plan it again."
+                  "severity": "low",
+                  "reason": "When the same query shape is sent as new statement text each time, the Query Service parses and plans it again on every call."
                 }
               ],
               "improvements": [
                 {
                   "id": "perf-improvement-prepared",
                   "title": "Prepare statements that run often",
-                  "description": "Use SDK parameters so the statement text stays stable. The server can then reuse the plan. This is the performance side of the injection control in Security."
+                  "description": "Consider keeping the statement text constant with parameters and setting the SDK adhoc option to false, so the Query Service prepares the statement once and reuses the plan."
                 }
               ]
             },
             "alsoRelevantTo": [
               "Data Management & Consistency"
             ]
+          },
+          {
+            "id": "perf1-partitioned",
+            "label": "Partition very large indexes across Index nodes",
+            "ifNotSelected": {
+              "risks": [
+                {
+                  "id": "perf-risk-partitioned",
+                  "severity": "low",
+                  "reason": "A single very large index lives on one Index Service node (plus its replicas), which limits scan throughput and memory to that node."
+                }
+              ],
+              "improvements": [
+                {
+                  "id": "perf-imp-partitioned",
+                  "title": "Partition the large index",
+                  "description": "Consider PARTITION BY HASH on a large index so it is split across Index Service nodes and scanned in parallel. Index partitioning is an Enterprise Edition feature."
+                }
+              ]
+            },
+            "optional": true,
+            "guidance": "Only for indexes that are too large or too busy for one Index node."
           }
         ],
         "audience": [
@@ -2111,7 +2517,7 @@
       {
         "id": "perf-2",
         "title": "How are client data access paths and document models structured?",
-        "description": "Align storage models and data access strategies with the native strengths of the Couchbase Key-Value architecture.",
+        "description": "Known documents are read by key, documents are shaped around their access path, and framework-generated SQL++ is reviewed.",
         "type": "multi_select",
         "options": [
           {
@@ -2121,15 +2527,15 @@
               "risks": [
                 {
                   "id": "perf-risk-kv",
-                  "severity": "high",
-                  "reason": "SQL++ for a document you already know by id adds a query plan and an index lookup. The Key-Value get or upsert goes to the Data Service directly."
+                  "severity": "medium",
+                  "reason": "Reading a document by its key through SQL++ adds query planning and an index lookup. A Key-Value get or upsert goes directly to the Data Service and is much faster."
                 }
               ],
               "improvements": [
                 {
                   "id": "perf-improvement-kv",
                   "title": "Use Key-Value for a known id",
-                  "description": "Use get, insert, replace, or upsert when the document id is known. Use SQL++ when you must find documents by a field."
+                  "description": "When the document id is known, consider the Key-Value API (get, insert, replace, upsert). SQL++ is best kept for finding documents by their fields."
                 }
               ]
             }
@@ -2141,15 +2547,15 @@
               "risks": [
                 {
                   "id": "perf-risk-model",
-                  "severity": "high",
-                  "reason": "A document that grows without a limit, or an update that rewrites the whole document to change one field, moves too much data."
+                  "severity": "medium",
+                  "reason": "A document that grows without limit, or an update that rewrites the whole document to change one field, moves more data than necessary on every call."
                 }
               ],
               "improvements": [
                 {
                   "id": "perf-improvement-model",
                   "title": "Match the document to the access",
-                  "description": "Keep one document for one access path. Use a Sub-Document mutation when you change a field and do not need to send the rest."
+                  "description": "Consider shaping each document around one access path and keeping its size bounded. A Sub-Document mutation (mutateIn) changes a single field without sending the rest of the document."
                 }
               ]
             }
@@ -2162,14 +2568,14 @@
                 {
                   "id": "perf-risk-polling",
                   "severity": "low",
-                  "reason": "A client that polls for changes adds a steady query load. Eventing runs when the document changes."
+                  "reason": "An application that polls for changes adds a steady query load. The Eventing Service runs a function when a document changes, with no polling."
                 }
               ],
               "improvements": [
                 {
                   "id": "perf-improvement-eventing",
-                  "title": "React on the server when polling is the current design",
-                  "description": "Move that reaction into an Eventing function if it belongs next to the data. A message bus is still a valid design when the consumer is outside the cluster."
+                  "title": "React on the server instead of polling",
+                  "description": "Where the reaction belongs next to the data, consider moving it into an Eventing function. A message bus remains a valid design when the consumer is outside the cluster."
                 }
               ]
             },
@@ -2184,14 +2590,14 @@
                 {
                   "id": "perf-risk-keys",
                   "severity": "medium",
-                  "reason": "A key that every request updates, or a model that can only be read by a query, bypasses the Key-Value service."
+                  "reason": "A model that can only be read through a query misses the fastest path in Couchbase, the key lookup. A single key that every request updates becomes a hot spot on one node."
                 }
               ],
               "improvements": [
                 {
                   "id": "perf-imp-keys",
                   "title": "Make the common read a key lookup",
-                  "description": "Put the access key in the document ID. Split a hot counter or lock document when one key receives a disproportionate share of writes."
+                  "description": "Consider putting the natural lookup value in the document id, and splitting a hot counter or lock document across several keys when one key receives most of the writes."
                 }
               ]
             }
@@ -2203,15 +2609,15 @@
               "risks": [
                 {
                   "id": "perf-risk-framework",
-                  "severity": "high",
-                  "reason": "Frameworks such as Spring Data can create a primary index or emit a query that scans the whole collection."
+                  "severity": "medium",
+                  "reason": "Some frameworks and ORMs generate SQL++ that scans a whole collection, or create a primary index at startup. Those queries work on a small data set and slow down as the data grows."
                 }
               ],
               "improvements": [
                 {
                   "id": "perf-imp-framework",
                   "title": "Treat generated SQL++ as production code",
-                  "description": "Capture the SQL++ the framework sends, run EXPLAIN, and fail the build if the plan uses a primary index."
+                  "description": "Consider capturing the SQL++ a framework sends, running EXPLAIN on it, and treating a plan that uses a primary index or a full scan as a build failure."
                 }
               ]
             }
@@ -2223,15 +2629,15 @@
               "risks": [
                 {
                   "id": "perf-risk-projection",
-                  "severity": "medium",
-                  "reason": "Reading the whole document to use one field increases network cost and client memory."
+                  "severity": "low",
+                  "reason": "Reading a whole document to use one field increases network transfer and client memory."
                 }
               ],
               "improvements": [
                 {
                   "id": "perf-imp-projection",
                   "title": "Project or use lookupIn",
-                  "description": "Return the required fields from SQL++, or use the SDK Sub-Document API when the key is already known."
+                  "description": "Consider selecting only the required fields in SQL++, or using a Sub-Document lookup (lookupIn) when the document key is known."
                 }
               ]
             }
@@ -2244,14 +2650,14 @@
                 {
                   "id": "perf-risk-counters",
                   "severity": "low",
-                  "reason": "A read-modify-write counter loses updates and creates contention on one document."
+                  "reason": "A counter updated by read-modify-write loses updates under concurrency and creates contention on one document."
                 }
               ],
               "improvements": [
                 {
                   "id": "perf-imp-counters",
                   "title": "Use the atomic counter API",
-                  "description": "Replace read-modify-write counter updates with the SDK increment and decrement operations."
+                  "description": "Consider the SDK increment and decrement operations, which update a counter atomically on the server."
                 }
               ]
             }
@@ -2276,14 +2682,14 @@
                 {
                   "id": "perf-risk-services",
                   "severity": "medium",
-                  "reason": "Query, Index, and Search can steal CPU and RAM from the Data service and slow key-value reads."
+                  "reason": "Query, Index, and Search share CPU and memory with the Data Service when they run on the same nodes, and a heavy query or index build can slow Key-Value latency."
                 }
               ],
               "improvements": [
                 {
                   "id": "perf-improvement-services",
                   "title": "Separate services that contend",
-                  "description": "Put Data on its own nodes when Query or Index load moves key-value latency. A small cluster can still share services if you have measured that it is fine."
+                  "description": "Consider placing the Data Service on its own nodes when Query or Index load affects Key-Value latency. Multi-dimensional scaling lets each service scale independently. A small cluster can still share services when measurements show it is fine."
                 }
               ]
             },
@@ -2298,15 +2704,15 @@
               "risks": [
                 {
                   "id": "perf-risk-memory",
-                  "severity": "high",
-                  "reason": "An index that does not fit in its RAM quota reads from disk and slows every query that uses it."
+                  "severity": "medium",
+                  "reason": "An index that does not fit in the Index Service memory quota is read from disk, and every query that uses it becomes slower."
                 }
               ],
               "improvements": [
                 {
                   "id": "perf-improvement-index-memory",
-                  "title": "Size the Index service",
-                  "description": "Watch the index resident ratio. New indexes use the Plasma storage engine. Add Index nodes or RAM before that ratio falls and queries start hitting disk."
+                  "title": "Size the Index Service",
+                  "description": "Consider watching the index resident ratio and the Index Service memory quota, and adding memory or Index nodes before indexes start spilling to disk. The standard index storage engine (Plasma) can keep part of an index on disk, but queries are fastest when the working set is in memory."
                 }
               ]
             }
@@ -2319,19 +2725,43 @@
                 {
                   "id": "perf-risk-storage-engine",
                   "severity": "low",
-                  "reason": "Couchstore is a good fit when the dataset stays in memory. Magma is the better fit when the bucket is larger than memory."
+                  "reason": "Couchstore is a good fit when the dataset stays in memory. Magma is designed for data sets much larger than memory; it is the default storage engine on Capella and the recommended engine on Couchbase Server 8.0 and later."
                 }
               ],
               "improvements": [
                 {
                   "id": "perf-improvement-magma",
                   "title": "Match the storage engine to the bucket",
-                  "description": "Use Magma for a large bucket. Keep Couchstore when the working set fits in RAM. The engine is chosen per bucket and is awkward to change later."
+                  "description": "The storage engine is chosen per bucket. Consider Magma for large buckets and for data sets that do not fit in memory, and Couchstore when the working set fits in RAM. Changing the engine later requires a migration, so it is best decided at bucket creation."
                 }
               ]
             },
             "optional": true,
             "guidance": "Capella uses Magma by default. On Server 8.0 and later, Magma is the recommended engine for most buckets. Couchstore fits a small dataset that stays in memory. Reading a document from disk is still a disk read."
+          },
+          {
+            "id": "perf3-quota",
+            "label": "Keep the total service memory quotas within the Couchbase guideline for the node",
+            "ifNotSelected": {
+              "risks": [
+                {
+                  "id": "perf-risk-quota",
+                  "severity": "medium",
+                  "reason": "Couchbase recommends allocating no more than 90% of a node's memory (80% on nodes with little memory) to Couchbase services. Quotas set higher than that leave nothing for the operating system and for the Couchbase processes that run outside the quotas, which leads to swapping or to the process being killed."
+                }
+              ],
+              "improvements": [
+                {
+                  "id": "perf-imp-quota",
+                  "title": "Check service memory quotas against node RAM",
+                  "description": "Consider reviewing the Memory Quotas panel in the Web Console against the node RAM, and sizing the Data Service quota from the sizing guidelines (metadata, values, replicas, working set, and overhead)."
+                }
+              ]
+            },
+            "appliesTo": [
+              "self-managed",
+              "operator"
+            ]
           }
         ],
         "audience": [
@@ -2351,15 +2781,15 @@
               "risks": [
                 {
                   "id": "perf-risk-cbo",
-                  "severity": "medium",
-                  "reason": "Without statistics, the cost-based optimizer has little information about how many documents match a predicate and can choose a poor index."
+                  "severity": "low",
+                  "reason": "Without up-to-date statistics, the cost-based optimizer has little information about how many documents match a predicate and can choose a poor index or join order."
                 }
               ],
               "improvements": [
                 {
                   "id": "perf-improvement-cbo",
                   "title": "Refresh collection statistics",
-                  "description": "Run UPDATE STATISTICS on the collections used by complex queries after large loads or big data changes."
+                  "description": "Consider running UPDATE STATISTICS on the collections used by complex queries after large loads or significant data changes."
                 }
               ]
             }
@@ -2372,14 +2802,14 @@
                 {
                   "id": "perf-risk-advisor",
                   "severity": "low",
-                  "reason": "ADVISE suggests an index for a statement. It does not replace EXPLAIN, and it is not required for every query."
+                  "reason": "The Index Advisor (ADVISE) suggests an index for a given statement. It is a starting point and does not replace EXPLAIN."
                 }
               ],
               "improvements": [
                 {
                   "id": "perf-improvement-advisor",
                   "title": "Ask ADVISE for a starting index",
-                  "description": "Run ADVISE on the slow statement, then check the suggestion with EXPLAIN and with the indexes you already have."
+                  "description": "When a slow query has no obvious index, consider running ADVISE on the statement, then checking the suggestion with EXPLAIN against the indexes that already exist."
                 }
               ]
             },
@@ -2404,15 +2834,15 @@
               "risks": [
                 {
                   "id": "perf-risk-bulk",
-                  "severity": "medium",
-                  "reason": "One HTTP-style call per document, waiting for each response, turns a load into a long sequence of round trips."
+                  "severity": "low",
+                  "reason": "Sending one document at a time and waiting for each response turns a bulk load into a long sequence of round trips."
                 }
               ],
               "improvements": [
                 {
                   "id": "perf-improvement-bulk",
                   "title": "Batch large loads",
-                  "description": "Use the SDK bulk helpers or a bounded set of concurrent operations. Set the batch size from a test, not from an unlimited loop."
+                  "description": "Consider the SDK bulk or reactive APIs with a bounded number of concurrent operations, and choosing the batch size from a test rather than an unlimited loop."
                 }
               ]
             },
@@ -2427,14 +2857,14 @@
                 {
                   "id": "perf-risk-defer",
                   "severity": "low",
-                  "reason": "Building every index while millions of documents are loading makes the import and the index build slower together."
+                  "reason": "Building every index while millions of documents are loading slows both the import and the index build."
                 }
               ],
               "improvements": [
                 {
                   "id": "perf-improvement-defer",
                   "title": "Build indexes after the import",
-                  "description": "Create the indexes with defer_build, load the data, then run BUILD INDEX."
+                  "description": "Consider creating indexes with defer_build set to true, loading the data, then running BUILD INDEX so all indexes are built in a single pass."
                 }
               ]
             },
@@ -2449,14 +2879,14 @@
                 {
                   "id": "perf-risk-offset",
                   "severity": "medium",
-                  "reason": "A large OFFSET still reads and discards every skipped row on each page."
+                  "reason": "A large OFFSET still reads and discards every skipped row on each page, so later pages get slower."
                 }
               ],
               "improvements": [
                 {
                   "id": "perf-imp-pagination",
                   "title": "Page with a keyset",
-                  "description": "Stream SDK results and continue from the last key or document ID instead of increasing OFFSET."
+                  "description": "Consider streaming results from the SDK and paginating from the last key or document id (keyset pagination) rather than increasing OFFSET."
                 }
               ]
             }
@@ -2469,14 +2899,14 @@
                 {
                   "id": "perf-risk-batch",
                   "severity": "medium",
-                  "reason": "An unbounded fan-out saturates the cluster during recovery and during a bulk job."
+                  "reason": "An unbounded fan-out saturates the cluster during a bulk job and during a recovery."
                 }
               ],
               "improvements": [
                 {
                   "id": "perf-imp-batch",
                   "title": "Cap in-flight work",
-                  "description": "Choose a batch size and a concurrency limit, then measure them against a realistic data set."
+                  "description": "Consider choosing a batch size and a concurrency limit, and measuring them against a realistic data set."
                 }
               ]
             }
@@ -2489,14 +2919,14 @@
                 {
                   "id": "perf-risk-loadtest",
                   "severity": "medium",
-                  "reason": "A test of tiny uniform documents hides the working set and the hot keys production will have."
+                  "reason": "A test with tiny, uniform documents hides the working set size and the hot keys that production will have."
                 }
               ],
               "improvements": [
                 {
                   "id": "perf-imp-loadtest",
                   "title": "Load-test the real shape of the data",
-                  "description": "Use a tool such as cbc-pillowfight or YCSB with production-like sizes, TTLs, and key distribution."
+                  "description": "Consider load-testing with production-like document sizes, TTLs, and key distribution, for example with cbc-pillowfight or YCSB."
                 }
               ]
             }
@@ -2509,14 +2939,14 @@
                 {
                   "id": "perf-risk-range",
                   "severity": "low",
-                  "reason": "An index created only so a batch job can walk keys adds memory and write cost to the cluster."
+                  "reason": "An index created only so that a batch job can walk through keys adds memory and write cost to the cluster."
                 }
               ],
               "improvements": [
                 {
                   "id": "perf-imp-range",
-                  "title": "Prefer a KV range scan for key ranges on Server 7.6+",
-                  "description": "When the job only needs documents in key order, use the SDK range scan instead of a secondary index."
+                  "title": "Prefer a Key-Value range scan for key ranges",
+                  "description": "On Couchbase Server 7.6 and later, consider the SDK Key-Value range scan for jobs that only need documents in key order, instead of a secondary index."
                 }
               ]
             }
@@ -2541,14 +2971,14 @@
                 {
                   "id": "perf-risk-analytics",
                   "severity": "medium",
-                  "reason": "A full-collection aggregation on the Query Service uses the same CPU as the application's SQL++."
+                  "reason": "A full-collection aggregation on the Query Service uses the same CPU as the application's operational queries."
                 }
               ],
               "improvements": [
                 {
                   "id": "perf-improvement-analytics",
                   "title": "Move heavy scans to Analytics",
-                  "description": "Use the Analytics service for long scans and ad-hoc aggregates. Leave the Query Service for the application's operational queries."
+                  "description": "Consider running long scans and ad-hoc aggregates on the Analytics Service, which keeps its own copy of the data and does not compete with operational queries."
                 }
               ]
             },
@@ -2563,14 +2993,14 @@
                 {
                   "id": "perf-risk-fts-partitioning",
                   "severity": "low",
-                  "reason": "One large Search index can use more memory and disk than a single Search node can hold."
+                  "reason": "A single large Search index can use more memory and disk than one Search node can provide."
                 }
               ],
               "improvements": [
                 {
                   "id": "perf-improvement-fts-partitioning",
                   "title": "Partition the large Search index",
-                  "description": "Set index partitions so the Search index is spread across Search nodes."
+                  "description": "Consider setting index partitions on the Search index so it is spread across Search nodes."
                 }
               ]
             },
@@ -2584,15 +3014,15 @@
               "risks": [
                 {
                   "id": "perf-risk-type-mapping",
-                  "severity": "medium",
-                  "reason": "The default dynamic mapping indexes every field. The Search index then grows with data the application never searches."
+                  "severity": "low",
+                  "reason": "The default dynamic mapping indexes every field in every document. The Search index then grows with data the application never searches."
                 }
               ],
               "improvements": [
                 {
                   "id": "perf-improvement-type-mapping",
-                  "title": "Turn off dynamic mapping",
-                  "description": "Define the document type and the child fields that Search should index."
+                  "title": "Index only the fields you search",
+                  "description": "Consider defining the document type and only the child fields that Search should index, and disabling the default dynamic mapping."
                 }
               ]
             },
@@ -2610,12 +3040,12 @@
   {
     "id": "cost-optimization",
     "name": "Cost Optimization (COST)",
-    "description": "Run Couchbase systems to deliver business value at the lowest price point by right-sizing infrastructure, managing data lifecycles, and tracking resource attribution.",
+    "description": "Pay for the capacity the workload needs: right-size the infrastructure, manage data lifecycles, and attribute costs.",
     "questions": [
       {
         "id": "cost-1",
         "title": "How do you govern and monitor your Couchbase resource usage and costs?",
-        "description": "Establish policies and procedures to monitor, appropriately allocate, and alert on costs associated with your database workloads.",
+        "description": "Costs are attributed, monitored, and alerted on, and the access pattern is reviewed before capacity is added.",
         "type": "multi_select",
         "options": [
           {
@@ -2625,15 +3055,15 @@
               "risks": [
                 {
                   "id": "cost-risk-tagging",
-                  "severity": "medium",
-                  "reason": "Without tagging underlying instances or Kubernetes pods, organizations cannot track resources over their lifetime, making it impossible to attribute database costs to specific business units or applications."
+                  "severity": "low",
+                  "reason": "Without tags on the underlying instances, volumes, or Kubernetes resources, the database cost cannot be attributed to the application or business unit that drives it."
                 }
               ],
               "improvements": [
                 {
                   "id": "cost-imp-tagging",
-                  "title": "Implement a tagging scheme",
-                  "description": "Gather stakeholders to define a tagging schema for all underlying Couchbase infrastructure to enable cost allocation and chargebacks."
+                  "title": "Tag the Couchbase infrastructure",
+                  "description": "Consider agreeing a tagging scheme for the Couchbase infrastructure, so cost reports can be split by application, environment, and owner."
                 }
               ]
             }
@@ -2653,7 +3083,7 @@
                 {
                   "id": "cost-imp-alerts",
                   "title": "Alert on cost and size",
-                  "description": "On Capella, use the cost and sizing views. On a self-managed cluster in a cloud account, alert on the account spend and on unexpected node growth."
+                  "description": "On Capella, consider reviewing the billing and cluster sizing views regularly. On self-managed clusters in a cloud account, consider alerts on account spend and on unexpected growth in node count."
                 }
               ]
             }
@@ -2666,34 +3096,34 @@
                 {
                   "id": "cost-risk-app-patterns",
                   "severity": "medium",
-                  "reason": "The usual reason a cluster is oversized is the application access pattern, not a shortage of nodes."
+                  "reason": "The usual reason a cluster is oversized is the application access pattern, for example N+1 queries, polling loops, or scans of a whole collection, rather than a shortage of nodes."
                 }
               ],
               "improvements": [
                 {
                   "id": "cost-imp-app-patterns",
                   "title": "Fix the access pattern before buying capacity",
-                  "description": "Identify polling loops, per-row queries, and collection-wide scans, and remove them before scaling the Query or Index service."
+                  "description": "Before adding Query or Index nodes, consider reviewing system:completed_requests for repeated queries, polling, and full scans, and fixing those patterns first."
                 }
               ]
             }
           },
           {
             "id": "cost1-quotas",
-            "label": "Make per-service usage visible with collections, users, and rate limits or quotas",
+            "label": "Make per-service usage visible with its own user and collections",
             "ifNotSelected": {
               "risks": [
                 {
                   "id": "cost-risk-quotas",
-                  "severity": "medium",
-                  "reason": "A shared cluster with one database user cannot show which service is driving cost."
+                  "severity": "low",
+                  "reason": "A shared cluster where every service uses the same user and collection cannot show which service is driving the cost."
                 }
               ],
               "improvements": [
                 {
                   "id": "cost-imp-quotas",
                   "title": "Separate tenants inside the cluster",
-                  "description": "Give each service its own user and collection, and apply quotas or rate limits where the server version supports them."
+                  "description": "Consider giving each service its own database user and its own collections. Per-collection and per-user statistics then show who is using the cluster."
                 }
               ]
             }
@@ -2706,7 +3136,7 @@
       {
         "id": "cost-2",
         "title": "How do you optimize Couchbase compute and infrastructure costs?",
-        "description": "Select the appropriate resource type, size, and pricing models to meet workload performance needs at the lowest cost.",
+        "description": "Compute is sized from measured demand and bought with the right pricing model.",
         "type": "multi_select",
         "options": [
           {
@@ -2716,15 +3146,15 @@
               "risks": [
                 {
                   "id": "cost-risk-pricing",
-                  "severity": "medium",
-                  "reason": "A database that runs all month on on-demand cloud prices pays the highest rate for a predictable load."
+                  "severity": "low",
+                  "reason": "A database that runs all month on on-demand cloud pricing pays the highest rate for a predictable load."
                 }
               ],
               "improvements": [
                 {
                   "id": "cost-imp-pricing",
                   "title": "Price the steady footprint",
-                  "description": "Review committed pricing for the nodes you always run. This does not apply to hardware you already own."
+                  "description": "For the nodes that always run, consider the cloud provider's committed or reserved pricing. This does not apply to hardware you already own."
                 }
               ]
             },
@@ -2739,14 +3169,14 @@
                 {
                   "id": "cost-risk-scale-capella",
                   "severity": "medium",
-                  "reason": "A fixed Capella cluster sized for a peak that never arrives is paid for all month."
+                  "reason": "A Capella cluster sized for a peak that never arrives is paid for all month."
                 }
               ],
               "improvements": [
                 {
                   "id": "cost-imp-scale-capella",
                   "title": "Scale Capella from measured demand",
-                  "description": "Review Capella sizing against CPU, memory, and query load, and change the cluster size when the trend is sustained."
+                  "description": "Consider reviewing Capella sizing against CPU, memory, and query load, and resizing when the trend is sustained. Capella can scale nodes and services online."
                 }
               ]
             },
@@ -2764,15 +3194,15 @@
               "risks": [
                 {
                   "id": "cost-risk-scale-operator",
-                  "severity": "medium",
-                  "reason": "The Operator can add nodes, but a CPU target that ignores index or query memory still stalls the cluster or overpays for nodes."
+                  "severity": "low",
+                  "reason": "The Operator can add nodes, but an autoscaling rule based only on CPU ignores Index and Query memory and can either stall the cluster or add nodes that are not needed."
                 }
               ],
               "improvements": [
                 {
                   "id": "cost-imp-scale-operator",
                   "title": "Autoscale the Operator from service metrics",
-                  "description": "Use the Autonomous Operator with Kubernetes autoscaling based on the service that is actually saturated, not a single cluster-wide CPU target."
+                  "description": "Consider the Autonomous Operator's autoscaling with metrics from the service that is actually saturated, rather than a single cluster-wide CPU target."
                 }
               ]
             },
@@ -2785,20 +3215,20 @@
           },
           {
             "id": "cost2-scale-server",
-            "label": "Plan self-managed capacity changes; Server has no built-in cluster autoscaler",
+            "label": "Keep a capacity plan; Couchbase Server has no built-in cluster autoscaler",
             "ifNotSelected": {
               "risks": [
                 {
                   "id": "cost-risk-scale-server",
                   "severity": "medium",
-                  "reason": "Waiting for a node to run out of memory, then adding hardware by hand, is the failure mode self-managed clusters actually hit."
+                  "reason": "Couchbase Server has no built-in cluster autoscaler. Waiting for a node to run out of memory and then adding hardware by hand is the common failure mode of self-managed clusters."
                 }
               ],
               "improvements": [
                 {
                   "id": "cost-imp-scale-server",
                   "title": "Keep a capacity plan for self-managed Server",
-                  "description": "Track headroom and schedule node additions. Do not document a native Server autoscaler that the product does not provide."
+                  "description": "Consider keeping a capacity plan that tracks headroom and schedules node additions ahead of growth, and automating node provisioning so a planned addition is quick."
                 }
               ]
             },
@@ -2817,7 +3247,7 @@
       {
         "id": "cost-3",
         "title": "How do you optimize Couchbase data storage costs?",
-        "description": "Manage data lifecycles, limit index overhead, and align storage models to reduce unnecessary block storage expenses.",
+        "description": "Storage is spent only on data and indexes that are actually used.",
         "type": "multi_select",
         "options": [
           {
@@ -2828,14 +3258,14 @@
                 {
                   "id": "cost-risk-ephemeral",
                   "severity": "low",
-                  "reason": "A cache that is stored in a Couchbase bucket still writes to disk unless the bucket is ephemeral."
+                  "reason": "A cache stored in a Couchbase bucket still writes to disk unless the bucket is ephemeral."
                 }
               ],
               "improvements": [
                 {
                   "id": "cost-imp-ephemeral",
                   "title": "Use an ephemeral bucket for a real cache",
-                  "description": "Choose ephemeral when losing the data on restart is acceptable. Do not use it for data you must keep."
+                  "description": "Consider an ephemeral bucket for data that can be lost on restart. Data that must be kept belongs in a Couchbase bucket."
                 }
               ]
             },
@@ -2849,15 +3279,15 @@
               "risks": [
                 {
                   "id": "cost-risk-indexes",
-                  "severity": "medium",
-                  "reason": "Unused or redundant indexes waste expensive memory quota and disk space while simultaneously slowing down mutation write performance."
+                  "severity": "low",
+                  "reason": "Unused or duplicate indexes consume Index Service memory and disk, and each one still has to be updated on every write."
                 }
               ],
               "improvements": [
                 {
                   "id": "cost-imp-indexes",
-                  "title": "Establish index cleanup routines",
-                  "description": "Regularly audit index usage statistics via system catalogs, removing indexes that do not support active query workflows."
+                  "title": "Remove unused indexes",
+                  "description": "Consider reviewing index usage statistics on a schedule and dropping indexes that no longer support an active query."
                 }
               ]
             }
@@ -2870,7 +3300,7 @@
       {
         "id": "cost-4",
         "title": "How do you manage data transfer and network costs?",
-        "description": "Plan and monitor data transfer charges to make architectural decisions that minimize operational networking expenses.",
+        "description": "Data transfer between zones, regions, and the public internet is planned and measured.",
         "type": "multi_select",
         "options": [
           {
@@ -2880,15 +3310,15 @@
               "risks": [
                 {
                   "id": "cost-risk-endpoints",
-                  "severity": "medium",
-                  "reason": "Traffic from an application to the public Capella endpoint can be charged as internet egress."
+                  "severity": "low",
+                  "reason": "Traffic from an application to the public Capella endpoint can be billed as internet egress by the cloud provider."
                 }
               ],
               "improvements": [
                 {
                   "id": "cost-imp-endpoints",
                   "title": "Avoid public egress to Capella",
-                  "description": "Use Private Link or VPC peering for the application path. This is the cost side of the private-network control in Security."
+                  "description": "Consider a private endpoint or VPC peering for the application path. This is the cost side of the private-network control in Security."
                 }
               ]
             },
@@ -2905,15 +3335,15 @@
               "risks": [
                 {
                   "id": "cost-risk-xdcr",
-                  "severity": "medium",
-                  "reason": "Cross-region replication is billed as data transfer. Copying a whole bucket copies data the other site may never read."
+                  "severity": "low",
+                  "reason": "Cross-region replication is billed as data transfer. Copying a whole bucket also copies data the other site may never read."
                 }
               ],
               "improvements": [
                 {
                   "id": "cost-imp-xdcr",
                   "title": "Filter cross-region replication",
-                  "description": "Filter XDCR by collection or filter expression so only the required documents cross the region boundary."
+                  "description": "Consider filtering the XDCR replication by collection or with a filter expression, so only the required documents cross the region boundary."
                 }
               ]
             },
@@ -2927,7 +3357,7 @@
               "risks": [
                 {
                   "id": "cost-risk-zone-reads",
-                  "severity": "medium",
+                  "severity": "low",
                   "reason": "In cloud pricing, a read that crosses an availability zone can be billed even when a copy exists in the local zone."
                 }
               ],
@@ -2935,7 +3365,7 @@
                 {
                   "id": "cost-imp-zone-reads",
                   "title": "Prefer the local zone for replica reads",
-                  "description": "Configure the SDK preferred server group where the server version supports it. Do not use this to bypass a read that must see the latest write."
+                  "description": "On Couchbase Server 7.6.2 and later, consider configuring the SDK preferred server group so replica reads favor the local zone. This is for reads that can accept replica data; reads that must see the latest write should keep using the active copy."
                 }
               ]
             },
@@ -2950,14 +3380,14 @@
                 {
                   "id": "cost-risk-payload",
                   "severity": "low",
-                  "reason": "Shipping a full document when the caller needs one field increases data-transfer cost."
+                  "reason": "Sending a full document when the caller needs one field increases data-transfer cost."
                 }
               ],
               "improvements": [
                 {
                   "id": "cost-imp-payload",
                   "title": "Send fewer bytes per call",
-                  "description": "Keep SDK compression enabled and fetch only the fields the request uses."
+                  "description": "Consider leaving SDK compression enabled (it is on by default) and fetching only the fields the request uses through projections or Sub-Document operations."
                 }
               ]
             }
@@ -2970,7 +3400,7 @@
       {
         "id": "cost-5",
         "title": "How do you manage the lifecycle of your Couchbase environments to prevent waste?",
-        "description": "Implement resource management from inception to end-of-life, shutting down unused resources to reduce waste.",
+        "description": "Non-production clusters are stopped when nobody uses them, and unused assets are removed.",
         "type": "multi_select",
         "options": [
           {
@@ -2988,7 +3418,7 @@
                 {
                   "id": "cost-imp-hibernation",
                   "title": "Stop non-production Capella clusters",
-                  "description": "Turn the cluster off, or schedule that, outside working hours. Production clusters should not be paused this way."
+                  "description": "Consider turning non-production clusters off outside working hours, or scheduling on and off times in Capella. Production clusters should stay on."
                 }
               ]
             },
@@ -3005,14 +3435,14 @@
                 {
                   "id": "cost-risk-cleanup",
                   "severity": "low",
-                  "reason": "Retaining unused sample data buckets or detached physical disk volumes incurs ongoing block storage fees for zero business value."
+                  "reason": "Sample buckets, unused data, and detached volumes keep consuming storage without serving any application."
                 }
               ],
               "improvements": [
                 {
                   "id": "cost-imp-cleanup",
-                  "title": "Automate unused asset cleanup",
-                  "description": "Ensure development Sample Buckets are not deployed in higher environments, and actively monitor and delete orphaned block storage volumes."
+                  "title": "Clean up unused assets",
+                  "description": "Consider keeping sample buckets out of shared and production clusters, and reviewing orphaned volumes and unused buckets on a schedule."
                 }
               ]
             }
@@ -3027,12 +3457,12 @@
   {
     "id": "data-management-consistency",
     "name": "Data Management & Consistency (DATA)",
-    "description": "Manage consistency controls, write durability guarantees, and logical organization shapes across evolving Couchbase datasets.",
+    "description": "Durability, concurrency, consistency, data lifecycle, and how data is organized and replicated.",
     "questions": [
       {
         "id": "data-1",
         "title": "How do you manage write durability and concurrency controls?",
-        "description": "Balance application data integrity guarantees with network latency, and ensure safe concurrent document modifications.",
+        "description": "Writes that matter use a durability level, and concurrent updates use CAS.",
         "type": "multi_select",
         "options": [
           {
@@ -3043,14 +3473,14 @@
                 {
                   "id": "data-risk-durability",
                   "severity": "high",
-                  "reason": "A write that returns before it is replicated can be lost if the active node fails first."
+                  "reason": "A write that returns before it is replicated can be lost if the active node fails right after. Durability levels make Couchbase wait until the write is held by a majority of the Data Service nodes, or persisted, before acknowledging it."
                 }
               ],
               "improvements": [
                 {
                   "id": "data-improvement-durability",
                   "title": "Set durability on the writes that need it",
-                  "description": "Use Majority, or a stronger level the topology can meet, for those writes. A cache write can stay at the default."
+                  "description": "For writes that must survive a node loss, consider the majority durability level, or a stronger level the topology can meet (majorityAndPersistActive or persistToMajority). Cache-style writes can stay at the default."
                 }
               ]
             }
@@ -3063,14 +3493,14 @@
                 {
                   "id": "data-risk-cas",
                   "severity": "high",
-                  "reason": "A read-modify-write that ignores CAS overwrites the other caller's change."
+                  "reason": "A read-modify-write that ignores CAS silently overwrites a change made by another caller in between."
                 }
               ],
               "improvements": [
                 {
                   "id": "data-improvement-cas",
                   "title": "Use CAS for concurrent updates",
-                  "description": "Read the document, change it, and replace it with the CAS you read. Retry when the CAS no longer matches."
+                  "description": "Consider reading the document, modifying it, and replacing it with the CAS value from the read, then retrying when the server reports a CAS mismatch."
                 }
               ]
             }
@@ -3082,15 +3512,15 @@
               "risks": [
                 {
                   "id": "data-risk-locking",
-                  "severity": "medium",
-                  "reason": "getAndLock as the normal update path holds a lock on the document and lowers throughput. CAS is the usual control."
+                  "severity": "low",
+                  "reason": "Using getAndLock as the normal update path holds a lock on the document and lowers throughput. Optimistic locking with CAS is the usual control."
                 }
               ],
               "improvements": [
                 {
                   "id": "data-improvement-locking",
                   "title": "Keep pessimistic locks rare",
-                  "description": "Do not lock every document. If a measurement shows one hot key, use getAndLock with a short lock time and do not hold that lock across another network call."
+                  "description": "Consider keeping pessimistic locks for a measured hot document only, with a short lock time, and avoiding a lock held across a call to another system."
                 }
               ]
             },
@@ -3108,7 +3538,7 @@
       {
         "id": "data-2",
         "title": "How do you structure data lifecycles and logical isolation?",
-        "description": "Control database volume growth and manage document schema transformations over time using multi-tenant boundaries.",
+        "description": "Data is organized into scopes and collections, temporary documents expire with a TTL, and document shapes are versioned.",
         "type": "multi_select",
         "options": [
           {
@@ -3118,15 +3548,15 @@
               "risks": [
                 {
                   "id": "data-risk-collections",
-                  "severity": "high",
-                  "reason": "Dumping unrelated datasets into a single bucket complicates index design, safety boundaries, and data lifecycles, while creating separate buckets adds heavy cluster overhead."
+                  "severity": "medium",
+                  "reason": "Mixing unrelated datasets in one collection complicates index design, access control, and data lifecycle. Creating a separate bucket for each dataset adds memory and management overhead."
                 }
               ],
               "improvements": [
                 {
                   "id": "data-improvement-collections",
-                  "title": "Adopt a clean Scopes and Collections taxonomy",
-                  "description": "Group data structures logically into Scopes and Collections within a bucket to simplify access controls, indexing, and multi-tenant isolation."
+                  "title": "Organize data into scopes and collections",
+                  "description": "Consider grouping data into scopes and collections within a bucket. Roles, indexes, TTL, and XDCR filters can all be set per collection."
                 }
               ]
             }
@@ -3139,14 +3569,14 @@
                 {
                   "id": "data-risk-ttl",
                   "severity": "medium",
-                  "reason": "A cleanup job that deletes old documents can fall behind. A TTL lets the Data Service expire them."
+                  "reason": "A cleanup job that deletes old documents can fall behind. A TTL lets the Data Service expire them automatically."
                 }
               ],
               "improvements": [
                 {
                   "id": "data-improvement-ttl",
                   "title": "Expire temporary documents with a TTL",
-                  "description": "Set the TTL on the document or on the collection. Do not set a TTL on data that must be kept."
+                  "description": "Consider a TTL on documents or collections that should disappear, such as sessions and one-time tokens. Data that must be kept should not have a TTL."
                 }
               ]
             },
@@ -3164,14 +3594,14 @@
                 {
                   "id": "data-risk-ttl-reset",
                   "severity": "medium",
-                  "reason": "A replace that does not preserve expiry sets the TTL to 0. The document then never expires."
+                  "reason": "By default, a replace or upsert without an explicit expiry resets the document expiry to 0, which means the document no longer expires on its own."
                 }
               ],
               "improvements": [
                 {
                   "id": "data-imp-preserve-expiry",
                   "title": "Preserve expiry on later writes",
-                  "description": "Set the SDK preserve-expiry option on replace and upsert for documents whose lifetime is a TTL."
+                  "description": "Consider the preserveExpiry option on replace, upsert, and mutateIn for documents whose lifetime depends on a TTL. It is available on Couchbase Server 7.0 and later."
                 }
               ]
             },
@@ -3186,14 +3616,14 @@
                 {
                   "id": "data-risk-schema-version",
                   "severity": "medium",
-                  "reason": "Old and new document shapes in the same collection cannot be told apart without a version field. Readers then fail or ignore fields."
+                  "reason": "Old and new document shapes in the same collection cannot be told apart without a version field. Readers then fail or silently ignore fields."
                 }
               ],
               "improvements": [
                 {
                   "id": "data-imp-schema-version",
                   "title": "Version the document shape",
-                  "description": "Add a version field. Either upgrade the document when it is read, or run a backfill. Record which one you chose."
+                  "description": "Consider adding a schema version field to documents and deciding whether old documents are upgraded when they are read or through a backfill."
                 }
               ]
             }
@@ -3206,7 +3636,7 @@
       {
         "id": "data-3",
         "title": "How do you balance SQL++ query consistency with performance?",
-        "description": "Tune index scan consistency to meet business requirements without unnecessarily degrading query throughput.",
+        "description": "Scan consistency is chosen per query, so the wait is paid only where a query must see a specific write.",
         "type": "multi_select",
         "options": [
           {
@@ -3216,15 +3646,15 @@
               "risks": [
                 {
                   "id": "data-risk-scan-consistency",
-                  "severity": "high",
-                  "reason": "request_plus makes the query wait until the index has caught up, which is slower. not_bounded can miss a write the same session just made. One global setting is wrong for both cases."
+                  "severity": "medium",
+                  "reason": "request_plus makes a query wait until the index has caught up with all writes, which is slower. not_bounded, the default, returns what the index has now and can miss a write the same session just made. One global setting is wrong for one of the two cases."
                 }
               ],
               "improvements": [
                 {
                   "id": "data-improvement-scan-consistency",
                   "title": "Set consistency on the query that needs it",
-                  "description": "Use not_bounded for reads that can be slightly behind. Use request_plus or a mutation token only when that query must see specific writes."
+                  "description": "Consider choosing scan consistency per query: not_bounded for reads that can be slightly behind, and request_plus or at_plus only for the queries that must see specific writes."
                 }
               ]
             }
@@ -3236,15 +3666,15 @@
               "risks": [
                 {
                   "id": "data-risk-request-plus",
-                  "severity": "medium",
-                  "reason": "request_plus waits for the index to catch up with every mutation, not only the one from this session."
+                  "severity": "low",
+                  "reason": "request_plus waits for the index to catch up with every mutation in the cluster, not only the one made by this session."
                 }
               ],
               "improvements": [
                 {
                   "id": "data-imp-ryow",
                   "title": "Use at_plus for read-your-own-writes",
-                  "description": "Pass the mutation token from the write into the query with at_plus or consistentWith."
+                  "description": "When a session must see its own write, consider passing the mutation token from the write into the query (consistentWith / at_plus) rather than using request_plus everywhere."
                 }
               ]
             }
@@ -3268,14 +3698,14 @@
                 {
                   "id": "data-risk-transactions",
                   "severity": "medium",
-                  "reason": "Separate writes can leave the first document updated and the second unchanged if the process stops."
+                  "reason": "Separate writes can leave the first document updated and the second unchanged if the process stops in between."
                 }
               ],
               "improvements": [
                 {
                   "id": "data-improvement-transactions",
                   "title": "Use a transaction for that action",
-                  "description": "Use the SDK transaction API or a SQL++ transaction. Do not invent a two-phase commit in application code."
+                  "description": "When several documents must change together, consider Couchbase distributed ACID transactions through the SDK or SQL++. A home-made two-phase commit in application code is much harder to get right."
                 }
               ]
             },
@@ -3289,15 +3719,15 @@
               "risks": [
                 {
                   "id": "data-risk-subdoc",
-                  "severity": "medium",
-                  "reason": "Rewriting a large document to change one field moves the whole document and raises the chance of a CAS mismatch."
+                  "severity": "low",
+                  "reason": "Rewriting a large document to change one field moves the whole document across the network and raises the chance of a CAS mismatch."
                 }
               ],
               "improvements": [
                 {
                   "id": "data-improvement-subdoc",
                   "title": "Use a Sub-Document update for one field",
-                  "description": "Use mutateIn for a field change. A small document can still be replaced in full."
+                  "description": "Consider mutateIn for a single-field change. Small documents can still be replaced in full."
                 }
               ]
             }
@@ -3310,14 +3740,14 @@
                 {
                   "id": "data-risk-long-txn",
                   "severity": "medium",
-                  "reason": "A transaction that calls another service, or touches too many documents, holds resources until it expires."
+                  "reason": "A transaction that calls another service, or touches many documents, holds its resources until it commits or expires, and blocks other writers on those documents."
                 }
               ],
               "improvements": [
                 {
                   "id": "data-imp-short-txn",
                   "title": "Shorten the transaction",
-                  "description": "Do the Couchbase writes inside the transaction. Call other systems before or after it."
+                  "description": "Consider keeping transactions short, limited to the documents that must change together, and free of calls to external systems."
                 }
               ]
             },
@@ -3332,14 +3762,14 @@
                 {
                   "id": "data-risk-ambiguous-commit",
                   "severity": "medium",
-                  "reason": "A lost response after commit does not mean the transaction failed. Starting it again can apply the business action twice."
+                  "reason": "A lost response after commit does not mean the transaction failed. Starting the business action again can apply it twice."
                 }
               ],
               "improvements": [
                 {
                   "id": "data-imp-ambiguous-commit",
                   "title": "Handle an ambiguous commit",
-                  "description": "Do not retry the business action until the transaction outcome is known. Decide where the transaction cleanup metadata collection lives."
+                  "description": "Consider treating a TransactionCommitAmbiguous result as unknown: check the data before retrying the business action. The transaction cleanup process completes or rolls back the transaction in the background."
                 }
               ]
             },
@@ -3366,14 +3796,14 @@
                 {
                   "id": "data-risk-conflict",
                   "severity": "high",
-                  "reason": "The mode is fixed at bucket creation. Timestamp mode with drifting clocks can keep the wrong document. Buckets in one replication must use the same mode."
+                  "reason": "The XDCR conflict-resolution mode is set when the bucket is created and cannot be changed later. Source and target buckets in a replication must use the same mode. Timestamp-based resolution depends on synchronized clocks; with clock drift it can keep the wrong version."
                 }
               ],
               "improvements": [
                 {
                   "id": "data-improvement-conflict",
-                  "title": "Record the conflict mode before the bucket exists",
-                  "description": "Write down sequence-number or timestamp before the bucket exists. Use timestamp when clocks stay in sync. Use the same choice on every bucket in that replication."
+                  "title": "Decide the conflict mode before the bucket exists",
+                  "description": "Consider deciding between sequence-number and timestamp resolution before the bucket is created, and using the same choice on both sides of the replication. Timestamp resolution needs NTP on every node of both clusters."
                 }
               ]
             },
@@ -3392,14 +3822,14 @@
                 {
                   "id": "data-risk-filtering",
                   "severity": "low",
-                  "reason": "Replicating every collection sends data the other site may not be allowed to store, and it uses bandwidth."
+                  "reason": "Replicating every collection sends data the other site may not be allowed to store, and uses bandwidth for nothing."
                 }
               ],
               "improvements": [
                 {
                   "id": "data-improvement-filtering",
                   "title": "Filter the replication",
-                  "description": "Use a collection mapping or a filter expression. Do not replicate a collection only because it sits in the same bucket."
+                  "description": "Consider collection mapping or a filter expression on the replication, so a remote cluster receives only what it needs."
                 }
               ]
             },
@@ -3421,7 +3851,7 @@
                 {
                   "id": "data-improvement-logging",
                   "title": "Log XDCR conflicts",
-                  "description": "Enable conflict logging and review it when the application reports a lost update."
+                  "description": "Consider enabling XDCR conflict logging when both clusters accept writes, and reviewing it when an application reports a lost update."
                 }
               ]
             },
@@ -3449,14 +3879,14 @@
                 {
                   "id": "data-risk-eventing",
                   "severity": "low",
-                  "reason": "Polling from an application adds a steady read load. Eventing runs when a document changes."
+                  "reason": "An application that polls for changes adds a steady read load. An Eventing function runs when a document changes."
                 }
               ],
               "improvements": [
                 {
                   "id": "data-improvement-eventing",
                   "title": "Use Eventing for that reaction",
-                  "description": "Keep the function small. Give it a role that can touch only the collections it needs."
+                  "description": "Consider an Eventing function for reactions that belong inside the cluster, kept small and given a role limited to the collections it needs."
                 }
               ]
             },
@@ -3478,7 +3908,7 @@
                 {
                   "id": "data-improvement-timers",
                   "title": "Use an Eventing timer",
-                  "description": "Create the timer from the function that owns the document. Do not add Eventing only to get a timer."
+                  "description": "Consider an Eventing timer created from the function that owns the document. Adding Eventing only to get a timer is usually not worth it."
                 }
               ]
             },
@@ -3492,15 +3922,15 @@
               "risks": [
                 {
                   "id": "data-risk-rbac-eventing",
-                  "severity": "high",
-                  "reason": "A function that runs as a broad administrator can change collections outside its job."
+                  "severity": "medium",
+                  "reason": "A function that runs with broad administrator privileges can change collections outside its purpose."
                 }
               ],
               "improvements": [
                 {
                   "id": "data-improvement-rbac-eventing",
                   "title": "Limit the function's role",
-                  "description": "Create a user for the function and grant only the collections it reads and writes."
+                  "description": "Consider a dedicated user for each Eventing function with access limited to the collections it reads and writes."
                 }
               ]
             },
@@ -3515,14 +3945,14 @@
                 {
                   "id": "data-risk-custom-dcp",
                   "severity": "medium",
-                  "reason": "A private DCP client has to handle flow control, failover, and rollback. Those are already handled by Eventing and the supported connectors."
+                  "reason": "The Database Change Protocol (DCP) is an internal protocol. A private DCP client has to handle flow control, failover, and rollback, which Eventing and the supported connectors already do."
                 }
               ],
               "improvements": [
                 {
                   "id": "data-imp-supported-feed",
                   "title": "Use a supported change feed",
-                  "description": "Prefer Eventing or the Kafka connector. Do not write a new DCP consumer."
+                  "description": "Consider Eventing or a supported connector such as the Kafka connector for change feeds, rather than a custom DCP consumer."
                 }
               ]
             }
@@ -3535,14 +3965,14 @@
                 {
                   "id": "data-risk-types",
                   "severity": "low",
-                  "reason": "One service writing a string date and another writing an epoch makes queries and comparisons disagree."
+                  "reason": "One service writing a string date and another writing an epoch number makes queries and comparisons disagree."
                 }
               ],
               "improvements": [
                 {
                   "id": "data-imp-types",
                   "title": "Publish the field formats",
-                  "description": "Agree the representation of dates, numbers, and enums and check it in review when a second language is added."
+                  "description": "Consider agreeing the representation of dates, numbers, and enums across services, and checking it in review when a second language or SDK is added."
                 }
               ]
             }

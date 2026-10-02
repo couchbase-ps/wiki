@@ -145,7 +145,7 @@ function collectAllAnswers() {
 }
 
 async function boot() {
-    const response = await fetch('./pillars.json');
+    const response = await fetch('./pillars.json?v=23');
     pillars = await response.json();
     // Signal ready so the parent (wiki editor) can send existing review state.
     if (window.parent && window.parent !== window) {
@@ -336,7 +336,7 @@ function getImprovements(missingOptions) {
                 ...improvement,
                 _severity: severity,
                 _rank: maxSeverity,
-                optionLabel: opt.label || improvement.title || ''
+                risks: opt.ifNotSelected?.risks || []
             };
             if (!existing || candidate._rank > existing._rank) byId.set(id, candidate);
         });
@@ -389,15 +389,18 @@ function notApplicableLabels(question, answer) {
 }
 
 function buildQuestionResult(question, answer) {
+    const answered = !!answer;
     const selectedIds = answer?.noneOfThese ? [] : (answer?.selectedPractices || []);
-    const missingOptions = getMissingOptions(question, selectedIds);
+    // An unanswered question is not scored: no risks and no recommendations until the team answers it.
+    const missingOptions = answered ? getMissingOptions(question, selectedIds) : [];
     const risks = getRisks(missingOptions);
     const improvements = getImprovements(missingOptions);
     const coverage = getCoverage(selectedIds, question);
-    const status = risks.length === 0 ? 'NONE' : computeStatus(risks);
+    const status = !answered ? 'UNANSWERED' : (risks.length === 0 ? 'NONE' : computeStatus(risks));
     return {
         questionId: question.id,
         questionTitle: question.title,
+        answered,
         status,
         selectedCount: coverage.selectedCount,
         totalOptions: coverage.totalOptions,
@@ -412,8 +415,10 @@ function buildQuestionResult(question, answer) {
     };
 }
 
-    function getPillarSummary(pillar, answerByQuestionId) {
-        const results = visibleQuestions(pillar).map(q => buildQuestionResult(q, answerByQuestionId[answerKey(pillar.id, q.id)]));
+function getPillarSummary(pillar, answerByQuestionId) {
+    const questions = visibleQuestions(pillar);
+    const results = questions.map(q => buildQuestionResult(q, answerByQuestionId[answerKey(pillar.id, q.id)]));
+    const answeredCount = questions.filter(q => !!answerByQuestionId[answerKey(pillar.id, q.id)]).length;
     const allRisks = results.flatMap(r => r.risks);
     const allImprovements = results.flatMap(r => r.improvements);
     const grouped = getGroupedRisksBySeverity(allRisks);
@@ -426,6 +431,8 @@ function buildQuestionResult(question, answer) {
         highRiskCount: grouped.high.length,
         mediumRiskCount: grouped.medium.length,
         lowRiskCount: grouped.low.length,
+        answeredCount,
+        questionCount: questions.length,
         improvements,
         results
     };
@@ -471,82 +478,140 @@ function processReview(details, answers) {
     };
 }
 
-function severityRank(level) {
-    const rank = { high: 3, medium: 2, low: 1 };
-    return rank[(level || 'low').toLowerCase()] || 1;
-}
-
 function titleCaseSeverity(level) {
     const normalized = (level || 'low').toLowerCase();
     return normalized.charAt(0).toUpperCase() + normalized.slice(1);
 }
 
-function buildPillarSection(pillar, pillarSummary) {
-    const improvementsMap = new Map();
+function buildMarkdownReport(context) {
+    const summaries = context?.pillarSummaries
+        || (context?.pillar && context?.pillarSummary ? [{ pillar: context.pillar, pillarSummary: context.pillarSummary }] : []);
+    if (!summaries.length) return '';
 
-    (pillarSummary.results || []).forEach(question => {
-        const grouped = getGroupedRisksBySeverity(question.risks || []);
-        const questionSeverity = grouped.high.length > 0 ? 'high' : grouped.medium.length > 0 ? 'medium' : 'low';
+    const sections = summaries.map(({ pillar, pillarSummary }) => markdownForPillar(pillar, pillarSummary)).filter(Boolean);
+    if (!sections.length) return '';
 
-        (question.improvements || []).forEach(improvement => {
-            const id = improvement.id || `${question.questionId}-improvement`;
-            if (!improvementsMap.has(id)) {
-                improvementsMap.set(id, {
-                    id,
-                    title: improvement.title || 'Improvement',
-                    description: improvement.description || '',
-                    docUrl: improvement.docUrl || null,
-                    severity: questionSeverity,
-                    risks: new Map(),
-                    questions: new Set()
-                });
-            }
-            const item = improvementsMap.get(id);
-            if (severityRank(questionSeverity) > severityRank(item.severity)) {
-                item.severity = questionSeverity;
-            }
-            (question.risks || []).forEach(risk => {
-                const riskId = risk.id || `${risk.severity || 'medium'}:${risk.reason || ''}`;
-                item.risks.set(riskId, risk);
-            });
-            item.questions.add(question.questionId.toUpperCase());
-        });
+    const lines = [];
+    lines.push(`# ${context.workloadName || 'Well-Architected Assessment Tool'}`);
+    lines.push('');
+    lines.push(`- **Customer:** ${context.customerName || ''}`);
+    lines.push(`- **Reviewer:** ${context.reviewerName || ''}`);
+    lines.push(`- **Workload:** ${context.workloadName || ''}`);
+    lines.push(`- **Type:** ${deploymentLabel(context.deploymentModel)}`);
+    if (context.generatedAt) lines.push(`- **Date:** ${context.generatedAt}`);
+    lines.push('');
+    lines.push(markdownSummary(summaries));
+    lines.push(sections.join('\n'));
+    return lines.join('\n');
+}
+
+function unansweredNotice(summaries) {
+    const pending = (summaries || [])
+        .map(({ pillar, pillarSummary }) => ({
+            name: pillar.name,
+            missing: (pillarSummary.questionCount || 0) - (pillarSummary.answeredCount || 0)
+        }))
+        .filter(item => item.missing > 0);
+    if (!pending.length) return '';
+    const total = pending.reduce((sum, item) => sum + item.missing, 0);
+    const detail = pending.map(item => `${item.name}: ${item.missing}`).join(' · ');
+    return `For the reviewer: ${total} question${total === 1 ? ' is' : 's are'} still unanswered and not scored (${detail}). Review them with the customer before sharing this report. This note is not part of the report.`;
+}
+
+function markdownSummary(summaries) {
+    const rows = summaries.map(({ pillar, pillarSummary }) => ({
+        name: pillar.name,
+        answered: pillarSummary.answeredCount || 0,
+        questions: pillarSummary.questionCount || 0,
+        high: pillarSummary.highRiskCount || 0,
+        medium: pillarSummary.mediumRiskCount || 0,
+        low: pillarSummary.lowRiskCount || 0
+    }));
+    const total = rows.reduce((acc, row) => ({
+        answered: acc.answered + row.answered,
+        questions: acc.questions + row.questions,
+        high: acc.high + row.high,
+        medium: acc.medium + row.medium,
+        low: acc.low + row.low
+    }), { answered: 0, questions: 0, high: 0, medium: 0, low: 0 });
+    const findings = total.high + total.medium + total.low;
+    const notAnswered = total.questions - total.answered;
+
+    const lines = [];
+    lines.push('## Summary');
+    lines.push('');
+    lines.push(`- **Questions answered:** ${total.answered} of ${total.questions}`);
+    lines.push(`- **Questions not answered:** ${notAnswered}`);
+    lines.push('');
+    if (findings === 0) {
+        lines.push('No findings. Every applicable practice is in place.');
+    } else {
+        lines.push(`This assessment found **${findings} recommendation${findings === 1 ? '' : 's'}**: ${total.high} high, ${total.medium} medium, and ${total.low} low. High items are worth addressing first; each one is explained in its pillar section below.`);
+    }
+    lines.push('');
+    lines.push('| Pillar | Answered | High | Medium | Low | Total |');
+    lines.push('|---|---:|---:|---:|---:|---:|');
+    rows.forEach(row => {
+        lines.push(`| ${row.name} | ${row.answered}/${row.questions} | ${row.high} | ${row.medium} | ${row.low} | ${row.high + row.medium + row.low} |`);
     });
+    lines.push(`| **All pillars** | **${total.answered}/${total.questions}** | **${total.high}** | **${total.medium}** | **${total.low}** | **${findings}** |`);
+    lines.push('');
+    lines.push('---');
+    lines.push('');
+    return lines.join('\n');
+}
 
-    const improvements = Array.from(improvementsMap.values()).sort((a, b) => {
-        const rankDiff = severityRank(b.severity) - severityRank(a.severity);
-        if (rankDiff !== 0) return rankDiff;
-        return a.title.localeCompare(b.title);
-    });
-
+function markdownForPillar(pillar, pillarSummary) {
+    const improvements = getPrioritizedImprovements(
+        (pillarSummary.results || []).flatMap(question => question.improvements || [])
+    );
     const lines = [];
     lines.push(`## ${pillar.name} - Recommended Improvements`);
     lines.push('');
 
+    const answered = pillarSummary.answeredCount || 0;
+    const questionCount = pillarSummary.questionCount || 0;
+    if (answered === 0) {
+        lines.push('This pillar was not covered in this assessment.');
+        lines.push('');
+        lines.push('---');
+        lines.push('');
+        return lines.join('\n');
+    }
+    if (answered < questionCount) {
+        lines.push(`_${answered} of ${questionCount} questions in this pillar were covered._`);
+        lines.push('');
+    }
+
     if (improvements.length === 0) {
-        lines.push('No improvement required for this pillar.');
+        lines.push('No recommendation for this pillar. The practices covered by the answered questions are in place.');
+        lines.push('');
+        lines.push('---');
         lines.push('');
         return lines.join('\n');
     }
 
     improvements.forEach(item => {
-        const riskDescriptions = Array.from(item.risks.values()).map(r => r.reason).filter(Boolean);
-        lines.push(`### ${item.title}`);
+        const riskDescriptions = (item.risks || []).map(risk => risk.reason).filter(Boolean);
+        lines.push(`### ${item.title || 'Improvement'}`);
         lines.push('');
-        lines.push(`**Severity:** _${titleCaseSeverity(item.severity)}_`);
+        lines.push(`**Severity:** _${titleCaseSeverity(item._severity)}_`);
         lines.push('');
         if (riskDescriptions.length > 0) {
-            lines.push(`**Description:** ${riskDescriptions.join(' ')}`);
+            lines.push(`**Risk & Impact:** ${riskDescriptions.join(' ')}`);
             lines.push('');
         }
-        lines.push(`**Suggested Next Steps:** ${item.description || 'Implement missing control and validate.'}`);
+        lines.push(`**Recommended Action:** ${item.description || 'Implement the missing practice and validate it.'}`);
         lines.push('');
         if (item.docUrl) {
             lines.push(`- [Documentation](${item.docUrl})`);
             lines.push('');
         }
+        lines.push('');
     });
 
+    lines.push('---');
+    lines.push('');
     return lines.join('\n');
 }
 
@@ -561,39 +626,22 @@ function buildWafMarkdown() {
     answers.forEach(answer => {
         answerByQuestionId[answerKey(answer.pillarId, answer.questionId)] = answer;
     });
-    const summary = processReview(draft, answers);
+    const result = processReview(draft, answers);
+    const pillarSummaries = pillars.map(pillar => ({
+        pillar,
+        pillarSummary: getPillarSummary(pillar, answerByQuestionId)
+    }));
+    const report = buildMarkdownReport({ ...draft, pillarSummaries, generatedAt: result.lastUpdatedDisplay });
     const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(draft))));
-
-    const lines = [];
-    lines.push(`<!-- ${STATE_MARKER}${b64} -->`);
-    lines.push('');
-    lines.push(`# ${draft.workloadName || 'Well-Architected Assessment Tool'}`);
-    lines.push('');
-    lines.push(`- **Customer:** ${draft.customerName || ''}`);
-    lines.push(`- **Reviewer:** ${draft.reviewerName || ''}`);
-    lines.push(`- **Workload:** ${draft.workloadName || ''}`);
-    lines.push(`- **Type:** ${deploymentLabel(draft.deploymentModel)}`);
-    lines.push('');
-    lines.push('## Overview');
-    lines.push('');
-    lines.push(`- **Questions answered:** ${summary.answeredQuestions}/${summary.totalQuestions}`);
-    lines.push(`- **High risks:** ${summary.highRiskCount}`);
-    lines.push(`- **Medium risks:** ${summary.mediumRiskCount}`);
-    lines.push(`- **Low risks:** ${summary.lowRiskCount}`);
-    lines.push('');
-
-    pillars.forEach(pillar => {
-        const pillarSummary = getPillarSummary(pillar, answerByQuestionId);
-        lines.push(buildPillarSection(pillar, pillarSummary));
-        lines.push('');
-    });
-
-    return lines.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd() + '\n';
+    return { markdown: `<!-- ${STATE_MARKER}${b64} -->\n\n${report}`.replace(/\n{3,}/g, '\n\n').trimEnd() + '\n', pillarSummaries };
 }
 
 function saveToWiki() {
     persistMetaFields();
-    const markdown = buildWafMarkdown();
+    const { markdown, pillarSummaries } = buildWafMarkdown();
+    // The wiki has no report preview, so the reviewer notice is shown before saving.
+    const notice = unansweredNotice(pillarSummaries);
+    if (notice && !confirm(`${notice}\n\nSave to the wiki anyway?`)) return;
     if (window.parent && window.parent !== window) {
         window.parent.postMessage({ event: 'save', markdown }, '*');
     }
@@ -722,10 +770,11 @@ function submitReview() {
         <div><span class="result-key">Workload</span> ${escapeHtml(result.workloadName)}</div>
         <div><span class="result-key">Type</span> ${escapeHtml(result.deploymentLabel)}</div>
         <div><span class="result-key">Last updated</span> ${result.lastUpdatedDisplay}</div>
-        <div><span class="result-key">Overall questions answered</span> ${result.answeredQuestions}/${result.totalQuestions}</div>
-        <div><span class="result-key">Overall risks - High risk</span> <span class="risk-high">${result.highRiskCount}</span></div>
-        <div><span class="result-key">Overall risks - Medium risk</span> <span class="risk-medium">${result.mediumRiskCount}</span></div>
-        <div><span class="result-key">Overall risks - Low risk</span> <span class="risk-low">${result.lowRiskCount}</span></div>
+        <div><span class="result-key">Questions answered</span> ${result.answeredQuestions}/${result.totalQuestions}</div>
+        <div><span class="result-key">Questions not answered</span> ${result.totalQuestions - result.answeredQuestions}</div>
+        <div><span class="result-key">Questions with a high-risk gap</span> <span class="risk-high">${result.highRiskCount}</span></div>
+        <div><span class="result-key">Questions with a medium-risk gap</span> <span class="risk-medium">${result.mediumRiskCount}</span></div>
+        <div><span class="result-key">Questions with a low-risk gap</span> <span class="risk-low">${result.lowRiskCount}</span></div>
         <div><span class="result-key">Review ID</span> ${result.reviewId}</div>
         <div class="assessment-item">
             <span class="result-key">All pillars</span>
@@ -735,7 +784,7 @@ function submitReview() {
                     <div class="pillar-head">
                         <div>
                             <div class="pillar-title">${pillar.name}</div>
-                            <div class="pillar-summary">Risks: H ${pillarSummary.highRiskCount} · M ${pillarSummary.mediumRiskCount} · L ${pillarSummary.lowRiskCount}</div>
+                            <div class="pillar-summary">Answered ${pillarSummary.answeredCount}/${pillarSummary.questionCount} · Risks: H ${pillarSummary.highRiskCount} · M ${pillarSummary.mediumRiskCount} · L ${pillarSummary.lowRiskCount}</div>
                         </div>
                         <span class="chip chip-${(pillarSummary.status || 'low').toLowerCase()}">${pillarSummary.status}</span>
                     </div>
@@ -746,13 +795,15 @@ function submitReview() {
                         const groupedRisks = getGroupedRisksBySeverity(qr.risks);
                         const improvements = getPrioritizedImprovements(qr.improvements);
                         const needsReview = qr.status === 'HIGH' || qr.status === 'MEDIUM';
+                        const statusLabel = !qr.answered ? 'NOT ANSWERED' : (needsReview ? 'NEEDS REVIEW' : 'OK');
+                        const statusClass = !qr.answered ? 'status-unanswered' : (needsReview ? 'status-review' : 'status-good');
                         return `
                         <details class="question-toggle">
                             <summary class="question-summary-line">
                                 <span><strong>${formatQuestionCode(qr.questionId)} - ${qr.questionTitle}</strong></span>
-                                <span class="chip chip-${qr.status.toLowerCase()}">${qr.status}</span>
-                                <span class="chip">Coverage ${qr.selectedCount}/${qr.totalOptions}</span>
-                                <span class="${needsReview ? 'status-review' : 'status-good'}">${needsReview ? 'NEEDS REVIEW' : 'OK'}</span>
+                                <span class="chip chip-${qr.status.toLowerCase()}">${qr.status === 'UNANSWERED' ? 'NOT ANSWERED' : qr.status}</span>
+                                ${qr.answered ? `<span class="chip">Coverage ${qr.selectedCount}/${qr.totalOptions}</span>` : ''}
+                                <span class="${statusClass}">${statusLabel}</span>
                             </summary>
                             <div class="section-title">Implemented controls</div>
                             <ul class="dense-list">
@@ -763,7 +814,7 @@ function submitReview() {
                                 ${groupedRisks.high.map(r => `<li class="risk-high">[HIGH] ${r.reason}</li>`).join('')}
                                 ${groupedRisks.medium.map(r => `<li class="risk-medium">[MEDIUM] ${r.reason}</li>`).join('')}
                                 ${groupedRisks.low.map(r => `<li class="risk-low">[LOW] ${r.reason}</li>`).join('')}
-                                ${(groupedRisks.high.length + groupedRisks.medium.length + groupedRisks.low.length === 0) ? '<li>No associated risks</li>' : ''}
+                                ${(groupedRisks.high.length + groupedRisks.medium.length + groupedRisks.low.length === 0) ? `<li>${qr.answered ? 'No associated risks' : 'Not scored: this question has not been answered yet'}</li>` : ''}
                             </ul>
                             <div class="section-title">Improvements</div>
                             <ul class="dense-list">
@@ -772,7 +823,7 @@ function submitReview() {
                                         <strong>${imp.title || 'Improvement'}</strong>${imp.description ? ` - ${imp.description}` : ''}
                                     </li>
                                 `).join('')}
-                                ${improvements.length === 0 ? '<li>No improvement required</li>' : ''}
+                                ${improvements.length === 0 ? `<li>${qr.answered ? 'No improvement required' : 'Answer the question to get recommendations'}</li>` : ''}
                             </ul>
                         </details>
                     `;
