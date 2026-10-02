@@ -332,7 +332,12 @@ function getImprovements(missingOptions) {
         (opt.ifNotSelected?.improvements || []).forEach(improvement => {
             const id = improvement.id || `${opt.id || 'opt'}:improvement`;
             const existing = byId.get(id);
-            const candidate = { ...improvement, _severity: severity, _rank: maxSeverity };
+            const candidate = {
+                ...improvement,
+                _severity: severity,
+                _rank: maxSeverity,
+                optionLabel: opt.label || improvement.title || ''
+            };
             if (!existing || candidate._rank > existing._rank) byId.set(id, candidate);
         });
     });
@@ -375,13 +380,21 @@ function getPrioritizedImprovements(improvements) {
     });
 }
 
+function notApplicableLabels(question, answer) {
+    const selectedIds = answer?.noneOfThese ? [] : (answer?.selectedPractices || []);
+    const selected = new Set((selectedIds || []).map(value => (value || '').toLowerCase()));
+    return applicableOptions(question)
+        .filter(opt => opt.optional && !selected.has((opt.id || '').toLowerCase()) && !selected.has((opt.label || '').toLowerCase()))
+        .map(opt => opt.label);
+}
+
 function buildQuestionResult(question, answer) {
     const selectedIds = answer?.noneOfThese ? [] : (answer?.selectedPractices || []);
     const missingOptions = getMissingOptions(question, selectedIds);
     const risks = getRisks(missingOptions);
     const improvements = getImprovements(missingOptions);
     const coverage = getCoverage(selectedIds, question);
-    const status = computeStatus(risks);
+    const status = risks.length === 0 ? 'NONE' : computeStatus(risks);
     return {
         questionId: question.id,
         questionTitle: question.title,
@@ -390,13 +403,17 @@ function buildQuestionResult(question, answer) {
         totalOptions: coverage.totalOptions,
         missingCount: coverage.missingCount,
         selectedLabels: getSelectedOptions(question, answer).map(o => o.label),
+        notSelectedLabels: missingOptions.map(o => o.label),
+        notApplicableLabels: notApplicableLabels(question, answer),
+        noneOfThese: !!answer?.noneOfThese,
+        notes: answer?.notes || '',
         risks,
         improvements
     };
 }
 
     function getPillarSummary(pillar, answerByQuestionId) {
-        const results = visibleQuestions(pillar).map(q => buildQuestionResult(q, answerByQuestionId[q.id]));
+        const results = visibleQuestions(pillar).map(q => buildQuestionResult(q, answerByQuestionId[answerKey(pillar.id, q.id)]));
     const allRisks = results.flatMap(r => r.risks);
     const allImprovements = results.flatMap(r => r.improvements);
     const grouped = getGroupedRisksBySeverity(allRisks);
@@ -422,11 +439,10 @@ function processReview(details, answers) {
     for (const pillar of pillars) {
         for (const question of visibleQuestions(pillar)) {
             const answer = answers.find(a => a.pillarId === pillar.id && a.questionId === question.id);
-            if (!answer) continue;
             const result = buildQuestionResult(question, answer);
             if (result.status === 'HIGH') highRiskCount += 1;
             else if (result.status === 'MEDIUM') mediumRiskCount += 1;
-            else lowRiskCount += 1;
+            else if (result.status === 'LOW') lowRiskCount += 1;
         }
     }
 
@@ -541,14 +557,17 @@ function buildWafMarkdown() {
     persistMetaFields();
     const draft = loadDraft();
     const answers = Object.values(draft.answers);
-    const answerByQuestionId = Object.fromEntries(answers.map(a => [a.questionId, a]));
+    const answerByQuestionId = {};
+    answers.forEach(answer => {
+        answerByQuestionId[answerKey(answer.pillarId, answer.questionId)] = answer;
+    });
     const summary = processReview(draft, answers);
     const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(draft))));
 
     const lines = [];
     lines.push(`<!-- ${STATE_MARKER}${b64} -->`);
     lines.push('');
-    lines.push(`# ${draft.workloadName || 'Well-Architected Tool'}`);
+    lines.push(`# ${draft.workloadName || 'Well-Architected Assessment Tool'}`);
     lines.push('');
     lines.push(`- **Customer:** ${draft.customerName || ''}`);
     lines.push(`- **Reviewer:** ${draft.reviewerName || ''}`);
@@ -678,24 +697,25 @@ function submitReview() {
     const result = processReview(details, answers);
     const resultBox = document.getElementById('result');
     resultBox.style.display = 'block';
-    const answerByQuestionId = Object.fromEntries(answers.map(a => [a.questionId, a]));
-    const selectedPillar = pillars.find(p => p.id === currentPillarId) || pillars[0];
-    const pillarsDashboard = selectedPillar
-        ? [{ pillar: selectedPillar, pillarSummary: getPillarSummary(selectedPillar, answerByQuestionId) }]
-        : [];
-    const activePillarSummary = pillarsDashboard.length > 0 ? pillarsDashboard[0].pillarSummary : null;
+    const answerByQuestionId = {};
+    answers.forEach(answer => {
+        answerByQuestionId[answerKey(answer.pillarId, answer.questionId)] = answer;
+    });
+    const pillarsDashboard = pillars.map(pillar => ({
+        pillar,
+        pillarSummary: getPillarSummary(pillar, answerByQuestionId)
+    }));
     lastReportContext = {
         ...details,
-        pillar: selectedPillar,
-        pillarSummary: activePillarSummary,
+        pillarSummaries: pillarsDashboard,
         generatedAt: result.lastUpdatedDisplay
     };
-    document.getElementById('saveReview').disabled = !lastReportContext?.pillarSummary;
+    document.getElementById('saveReview').disabled = pillarsDashboard.length === 0;
 
     resultBox.innerHTML = `
         <h2 class="overview-title">Workload overview</h2>
         <div class="overview-actions">
-            <button class="btn-secondary" type="button" onclick="document.getElementById('result').style.display='none'">Continue reviewing</button>
+            <button id="continueReview" class="btn-secondary" type="button">Continue reviewing</button>
         </div>
         <div><span class="result-key">Customer</span> ${escapeHtml(result.customerName)}</div>
         <div><span class="result-key">Reviewer</span> ${escapeHtml(result.reviewerName)}</div>
@@ -708,7 +728,7 @@ function submitReview() {
         <div><span class="result-key">Overall risks - Low risk</span> <span class="risk-low">${result.lowRiskCount}</span></div>
         <div><span class="result-key">Review ID</span> ${result.reviewId}</div>
         <div class="assessment-item">
-            <span class="result-key">Decision dashboard - ${selectedPillar ? selectedPillar.name : 'Current pillar'}</span>
+            <span class="result-key">All pillars</span>
             <div class="pillars-grid">
             ${pillarsDashboard.map(({ pillar, pillarSummary }) => `
                 <div class="pillar">
@@ -762,6 +782,14 @@ function submitReview() {
             </div>
         </div>
     `;
+    document.getElementById('continueReview').addEventListener('click', hideReviewResults);
+    resultBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function hideReviewResults() {
+    document.getElementById('result').style.display = 'none';
+    const questions = document.getElementById('pillarContent');
+    if (questions) questions.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 document.querySelectorAll('.page-tab').forEach(button => {

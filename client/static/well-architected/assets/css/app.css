@@ -557,7 +557,7 @@ button:disabled {
 }
 
 .result {
-    margin-top: var(--spacing-lg);
+    margin: 0 0 var(--spacing-xl);
     padding: var(--spacing-lg);
     border: 1px solid var(--color-border);
     border-radius: var(--radius);
@@ -701,7 +701,14 @@ button:disabled {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: var(--spacing-sm);
     margin-bottom: var(--spacing-sm);
+}
+
+.markdown-toolbar-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
 }
 
 .markdown-output {
