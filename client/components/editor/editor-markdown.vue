@@ -136,7 +136,7 @@
           template(v-slot:activator='{ on }')
             v-btn.mt-3.animated.fadeInLeft.wait-p3s(icon, tile, v-on='on', dark, @click='openWellArchitected').mx-0
               v-icon mdi-shield-check
-          span Insert Well-Architected Tool
+          span Insert Well-Architected Assessment Tool
         template(v-if='$vuetify.breakpoint.mdAndUp')
           v-spacer
           v-tooltip(right, color='teal')
@@ -749,7 +749,7 @@ export default {
             kind: 'well-architected',
             from: { line: startLine, ch: 0 },
             to: { line: startLine, ch: startLineLen },
-            text: 'Edit Well-Architected Tool',
+            text: 'Edit Well-Architected Assessment Tool',
             action: ((start, end) => {
               return (ev) => {
                 const endLen = this.cm.doc.getLine(end).length
